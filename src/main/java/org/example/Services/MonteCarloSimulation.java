@@ -1,0 +1,636 @@
+package org.example.Services;
+
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.example.DatabaseConnection;
+import org.example.Models.CtoAnualResultado;
+import org.example.Models.InversionOportunidad;
+import org.example.Models.Oportunidad;
+import org.example.Models.ResultadoSimulacion;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.*;
+
+public class MonteCarloSimulation {
+
+
+    int idVersion = 0;
+    int idOportunidadObjetivo = 0;
+
+
+
+
+    public MonteCarloSimulation(int IdVersion, int idOportunidadObjetivo) {
+
+        this.idVersion = IdVersion;
+        this.idOportunidadObjetivo = idOportunidadObjetivo;
+
+
+    }
+
+
+
+    DatabaseConnection databaseConnection = new DatabaseConnection();
+    Oportunidad oportunidad = databaseConnection.executeQuery(42, 2643); // Atributos y configuración
+
+    long startSimulacion = System.nanoTime();
+
+    private final double Pg = oportunidad.getPg(); // Probabilidad geológica
+    private final double P10 = oportunidad.getPceP10();
+    private final double P90 = oportunidad.getPceP90();
+    private final double P10Area = oportunidad.getArea10();
+    private final double P90Area = oportunidad.getArea90();
+    private final double factorConversionAceite = oportunidad.getFcAceite();
+    private final double factorConversionGas = oportunidad.getFcGas();
+    private final double factorCondensado = oportunidad.getFcCondensado();
+    private final double GastoInicialAceiteMin = oportunidad.getGastoMINAceite();
+    private final double GastoInicialAceiteMP = oportunidad.getGastoMPAceite();
+    private final double GastoInicialAceiteMax = oportunidad.getGastoMAXAceite();
+    private final double PrimeraDeclinacionMin = oportunidad.getPrimeraDeclinacionMin();
+    private final double PrimeraDeclinacionMP = oportunidad.getPrimeraDeclinacionMP();
+    private final double PrimeraDeclinacionMax = oportunidad.getPrimeraDeclinacionMAX();
+    private final InversionOportunidad inversionOportunidad = oportunidad.getInversionOportunidad();
+
+
+    double triangularInversionBat, triangularInversionPlataforma, triangularInversionLineaDescarga;
+    double triangularInversionEstacionCompresion, triangularInversionDucto, triangularInversionArbolesSubmarinos;
+    double triangularInversionManifolds, triangularInversionRisers, triangularInversionSistemasDeControl;
+    double triangularInversionCubiertaDeProces, triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta;
+
+
+
+    private Random random = new Random();
+
+    public ResponseEntity<List<Object>> runSimulation() {
+
+        int exitos = 0;
+        int fracasos = 0;
+        int valores = 0;
+        List<Object> resultados = new ArrayList<>();
+
+        // Crear libro y hoja en Excel
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Simulación Monte Carlo");
+
+        // Crear encabezado con columnas adicionales para "Años" y "CtoAnuales"
+        Row headerRow = sheet.createRow(0);
+        String[] headers = {
+                "Iteración", "Resultado", "Aleatorio PCE", "PCE",
+                "Aleatorio Gasto", "Gasto Inicial (mbpce)",
+                "Aleatorio Declinación", "Declinación",
+                "Aleatorio Área", "Área", "E.I.", "E.P", "E.T", "D.I", "D.P", "D.T", "Bateria", "Plataforma Desarrollo",
+                "Linea Descarga", "E.comprension ", "ducto", "Arboles submarinos", "manifols", "risers", "Sistemas de control", "Cubierta Proces", "Buquetaquecompra","buquetaQuerenta"  // Añadido aquí
+        };
+
+        IndexedColors[] colors = {
+                IndexedColors.LIGHT_BLUE, IndexedColors.GREY_25_PERCENT,
+                IndexedColors.LIGHT_GREEN, IndexedColors.LIGHT_YELLOW,
+                IndexedColors.LIGHT_ORANGE, IndexedColors.LIGHT_CORNFLOWER_BLUE,
+                IndexedColors.LIGHT_TURQUOISE, IndexedColors.BROWN, IndexedColors.GOLD
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(colors[i % colors.length].getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, 5000); // Ajusta el ancho de las columnas
+        }
+
+        // Iterar simulaciones
+        for (int i = 0; i < 100; i++) {
+            Row row = sheet.createRow(i + 1);
+            row.createCell(0).setCellValue(i + 1); // Iteración número
+            valores++;
+            System.out.println("Valores: " + valores);
+            ResultadoSimulacion ResultadoSimulacion = new ResultadoSimulacion();
+
+            if (pruebaGeologica()) {
+                exitos++;
+                row.createCell(1).setCellValue("Éxito"); // Marcar éxito
+
+                long startRecursoProspectivo = System.nanoTime(); // Tiempo inicial de toda la iteración
+
+// Valores aleatorios y cálculos para éxito
+                double aleatorioRecurso = 0.01 + (0.99 - 0.01) * Math.random();
+                double recurso = calcularRecursoProspectivo(aleatorioRecurso, P10, P90);
+                row.createCell(2).setCellValue(aleatorioRecurso);
+                row.createCell(3).setCellValue(recurso);
+                ResultadoSimulacion.setPce(recurso);
+
+                System.out.println(aleatorioRecurso);
+
+                long endRecursoProspectivo = System.nanoTime(); // Tiempo final para PCE
+                System.out.println("Tiempo para cálculos de PCE: " + (endRecursoProspectivo - startRecursoProspectivo) / 1_000_000 + " ms");
+
+
+
+                long startCuota = System.nanoTime();
+
+
+                double aleatorioGasto = random.nextDouble();
+                double gastoTriangular = calcularGastoInicial(recurso, aleatorioGasto);
+                row.createCell(4).setCellValue(aleatorioGasto);
+                row.createCell(5).setCellValue(gastoTriangular);
+                ResultadoSimulacion.setGastoInicial(gastoTriangular);
+
+                long endCuota = System.nanoTime();
+                System.out.println("Tiempo para cálculos de Cuota: " + (endCuota - startCuota) / 1_000_000 + " ms");
+
+
+                long startDeclinacion = System.nanoTime();
+
+                double aleatorioDeclinacion = random.nextDouble();
+                double declinacion = triangularDistribution(recurso, oportunidad.getPrimeraDeclinacionMin(),
+                        oportunidad.getPrimeraDeclinacionMAX(),
+                        oportunidad.getPrimeraDeclinacionMP(),
+                        aleatorioDeclinacion);
+                row.createCell(6).setCellValue(aleatorioDeclinacion);
+                row.createCell(7).setCellValue(declinacion);
+                ResultadoSimulacion.setDeclinacion(declinacion);
+
+                long endDeclinacion = System.nanoTime();
+
+                System.out.println("Tiempo para cálculos de declinacion: " + (endDeclinacion - startDeclinacion) / 1_000_000 + " ms");
+
+
+                long startArea = System.nanoTime();
+
+                double aleatorioArea = 0.01 + (0.99 - 0.01) * Math.random();
+                double area = calcularRecursoProspectivo(aleatorioArea, P10Area, P90Area);
+                row.createCell(8).setCellValue(aleatorioArea);
+                row.createCell(9).setCellValue(area);
+                ResultadoSimulacion.setArea(area);
+
+                long endArea = System.nanoTime();
+                System.out.println("Tiempo para cálculos de Area: " + (endArea - startArea) / 1_000_000 + " ms");
+
+
+
+                long startExploratorio = System.nanoTime();
+
+                double aleatorioExploratorioInfra = random.nextDouble();
+                double triangularExploratorioMin = triangularDistributionSinPCE(oportunidad.getInfraestructuraMin(),
+                        oportunidad.getInfraestructuraMax(),
+                        oportunidad.getInfraestructuraMP(),
+                        aleatorioExploratorioInfra);
+                row.createCell(10).setCellValue(triangularExploratorioMin);
+                ResultadoSimulacion.setExploratoriaInfra(triangularExploratorioMin);
+
+                double aleatorioExploratorioPerforacion = random.nextDouble();
+                double triangularExploratorioPer = triangularDistributionSinPCE(oportunidad.getPerforacionMin(),
+                        oportunidad.getPerforacionMax(),
+                        oportunidad.getPerforacionMP(),
+                        aleatorioExploratorioPerforacion);
+                row.createCell(11).setCellValue(triangularExploratorioPer);
+                ResultadoSimulacion.setExploratoriaPerf(triangularExploratorioPer);
+
+
+                double aleatorioExploratorioTerminacion = random.nextDouble();
+                double triangularExploratorioTer = triangularDistributionSinPCE(oportunidad.getTerminacionMin(),
+                        oportunidad.getTerminacionMax(),
+                        oportunidad.getTerminacionMP(),
+                        aleatorioExploratorioTerminacion);
+                row.createCell(12).setCellValue(triangularExploratorioTer);
+                ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
+
+                long endExploratorio = System.nanoTime();
+                System.out.println("Tiempo para cálculos de Exploratorio: " + (endExploratorio - startExploratorio) / 1_000_000 + " ms");
+
+
+
+                long startDesarrollo = System.nanoTime();
+
+                double aleatorioDesInfra = random.nextDouble();
+                double triangularDESInfra = triangularDistribution(recurso, oportunidad.getInfraestructuraMinDES(),
+                        oportunidad.getInfraestructuraMaxDES(),
+                        oportunidad.getInfraestructuraMPDES(),
+                        aleatorioDesInfra);
+                row.createCell(13).setCellValue(triangularDESInfra);
+                ResultadoSimulacion.setDesarrolloInfra(triangularDESInfra);
+
+
+                double aleatorioDesPer = random.nextDouble();
+                double triangularDESPer = triangularDistribution(recurso, oportunidad.getPerforacionMinDES(),
+                        oportunidad.getPerforacionMaxDES(),
+                        oportunidad.getPerforacionMPDES(),
+                        aleatorioDesPer);
+                row.createCell(14).setCellValue(triangularDESPer);
+                ResultadoSimulacion.setDesarrolloPerf(triangularDESPer);
+
+
+                double aleatorioDesTer = random.nextDouble();
+                double triangularDESTer = triangularDistribution(recurso, oportunidad.getTerminacionMinDES(),
+                        oportunidad.getTerminacionMaxDES(),
+                        oportunidad.getTerminacionMPDES(),
+                        aleatorioDesTer);
+                row.createCell(15).setCellValue(triangularDESTer);
+                ResultadoSimulacion.setDesarrolloTer(triangularDESTer);
+
+
+                long endDesarrollo = System.nanoTime();
+                System.out.println("Tiempo para cálculos de Desarrollo: " + (endDesarrollo - startDesarrollo) / 1_000_000 + " ms");
+
+
+                long startInversion = System.nanoTime();
+
+                if (inversionOportunidad.getBateriaMin() != 0) {
+                    double AleatorioInverision = random.nextDouble();
+                             triangularInversionBat = triangularDistribution(recurso, inversionOportunidad.getBateriaMin(),
+                            inversionOportunidad.getBateriaMax(),
+                            inversionOportunidad.getBateriaMp(),
+                            AleatorioInverision);
+                    row.createCell(16).setCellValue(triangularInversionBat);
+                    ResultadoSimulacion.setBateria(triangularInversionBat);
+                }
+
+                if (inversionOportunidad.getPlataformadesarrolloMin() != 0) {
+                    double AleatorioInverision = random.nextDouble();
+                            triangularInversionPlataforma = triangularDistribution(recurso, inversionOportunidad.getPlataformadesarrolloMin(),
+                            inversionOportunidad.getPlataformadesarrolloMax(),
+                            inversionOportunidad.getPlataformadesarrolloMp(),
+                            AleatorioInverision);
+                    row.createCell(17).setCellValue(triangularInversionPlataforma);
+                    ResultadoSimulacion.setPlataformaDesarrollo(triangularInversionPlataforma);
+                }
+
+                if (inversionOportunidad.getLineadedescargaMin() != 0) {
+                    double AleatorioInverision = random.nextDouble();
+                            triangularInversionLineaDescarga = triangularDistribution(recurso, inversionOportunidad.getLineadedescargaMin(),
+                            inversionOportunidad.getLineadedescargaMax(),
+                            inversionOportunidad.getLineadedescargaMp(),
+                            AleatorioInverision);
+                    row.createCell(18).setCellValue(triangularInversionLineaDescarga);
+                    ResultadoSimulacion.setLineaDescarga(triangularInversionLineaDescarga);
+                }
+
+                if (inversionOportunidad.getEstacioncompresionMin() != 0) {
+                    double AleatorioInverision = random.nextDouble();
+                            triangularInversionEstacionCompresion = triangularDistribution(recurso, inversionOportunidad.getEstacioncompresionMin(),
+                            inversionOportunidad.getEstacioncompresionMax(),
+                            inversionOportunidad.getEstacioncompresionMp(),
+                            AleatorioInverision);
+                    row.createCell(19).setCellValue(triangularInversionEstacionCompresion);
+                    ResultadoSimulacion.setEComprension(triangularInversionEstacionCompresion);
+                }
+
+                if (inversionOportunidad.getDuctoMin() != 0) {
+                    double AleatorioInverision = random.nextDouble();
+                            triangularInversionDucto = triangularDistribution(recurso, inversionOportunidad.getDuctoMin(),
+                            inversionOportunidad.getDuctoMax(),
+                            inversionOportunidad.getDuctoMp(),
+                            AleatorioInverision);
+                    row.createCell(20).setCellValue(triangularInversionDucto);
+                    ResultadoSimulacion.setDucto(triangularInversionDucto);
+                }
+
+                if (inversionOportunidad.getArbolessubmarinosMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionArbolesSubmarinos = triangularDistribution(recurso, inversionOportunidad.getArbolessubmarinosMin(),
+                            inversionOportunidad.getArbolessubmarinosMax(),
+                            inversionOportunidad.getArbolessubmarinosMp(),
+                            AleatorioInversion);
+                    row.createCell(21).setCellValue(triangularInversionArbolesSubmarinos);
+                    ResultadoSimulacion.setArbolesSubmarinos(triangularInversionArbolesSubmarinos);
+                }
+
+                if (inversionOportunidad.getManifoldsMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionManifolds = triangularDistribution(recurso, inversionOportunidad.getManifoldsMin(),
+                            inversionOportunidad.getManifoldsMax(),
+                            inversionOportunidad.getManifoldsMp(),
+                            AleatorioInversion);
+                    row.createCell(22).setCellValue(triangularInversionManifolds);
+                    ResultadoSimulacion.setManifolds(triangularInversionManifolds);
+                }
+
+                if (inversionOportunidad.getRisersMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionRisers = triangularDistribution(recurso, inversionOportunidad.getRisersMin(),
+                            inversionOportunidad.getRisersMax(),
+                            inversionOportunidad.getRisersMp(),
+                            AleatorioInversion);
+                    row.createCell(23).setCellValue(triangularInversionRisers);
+                    ResultadoSimulacion.setRisers(triangularInversionRisers);
+                }
+
+                if (inversionOportunidad.getSistemasdecontrolMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionSistemasDeControl = triangularDistribution(recurso, inversionOportunidad.getSistemasdecontrolMin(),
+                            inversionOportunidad.getSistemasdecontrolMax(),
+                            inversionOportunidad.getSistemasdecontrolMp(),
+                            AleatorioInversion);
+                    row.createCell(24).setCellValue(triangularInversionSistemasDeControl);
+                    ResultadoSimulacion.setSistemasDeControl(triangularInversionSistemasDeControl);
+                }
+
+                if (inversionOportunidad.getCubiertadeprocesMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionCubiertaDeProces = triangularDistribution(recurso, inversionOportunidad.getCubiertadeprocesMin(),
+                            inversionOportunidad.getCubiertadeprocesMax(),
+                            inversionOportunidad.getCubiertadeprocesMp(),
+                            AleatorioInversion);
+                    row.createCell(25).setCellValue(triangularInversionCubiertaDeProces);
+                    ResultadoSimulacion.setCubiertaDeProces(triangularInversionCubiertaDeProces);
+                }
+
+                if (inversionOportunidad.getBuquetanquecompraMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionBuqueTanqueCompra = triangularDistribution(recurso, inversionOportunidad.getBuquetanquecompraMin(),
+                            inversionOportunidad.getBuquetanquecompraMax(),
+                            inversionOportunidad.getBuquetanquecompraMp(),
+                            AleatorioInversion);
+                    row.createCell(26).setCellValue(triangularInversionBuqueTanqueCompra);
+                    ResultadoSimulacion.setBuqueTanqueCompra(triangularInversionBuqueTanqueCompra);
+                }
+
+                if (inversionOportunidad.getBuquetanquerentaMin() != 0) {
+                    double AleatorioInversion = random.nextDouble();
+                            triangularInversionBuqueTanqueRenta = triangularDistribution(recurso, inversionOportunidad.getBuquetanquerentaMin(),
+                            inversionOportunidad.getBuquetanquerentaMax(),
+                            inversionOportunidad.getBuquetanquerentaMp(),
+                            AleatorioInversion);
+                    row.createCell(27).setCellValue(triangularInversionBuqueTanqueRenta);
+                    ResultadoSimulacion.setBuqueTanqueRenta(triangularInversionBuqueTanqueRenta);
+                }
+
+
+
+
+
+                long endInversion = System.nanoTime();
+                System.out.println("Tiempo para cálculos de Inversion: " + (endInversion - startInversion) / 1_000_000 + " ms");
+
+
+
+                long startProduction = System.nanoTime();
+                // Llamada a productionQuery y almacenamiento del resultado
+                Map<Integer, Double> produccionAnualMap = databaseConnection.executeProductionQuery(42, 2643, gastoTriangular, declinacion, recurso, area );
+                for (Map.Entry<Integer, Double> entry : produccionAnualMap.entrySet()) {
+                    int anio = entry.getKey();
+                    double ctoAnual = entry.getValue();
+                    int columnIndex = EncuentraOCreaColumna(headerRow, anio);
+                    row.createCell(columnIndex).setCellValue(ctoAnual);
+
+                    CtoAnualResultado CtoAnualRes = new CtoAnualResultado(anio, ctoAnual);
+                    ResultadoSimulacion.getCtoAnualList().add(CtoAnualRes);
+
+
+                }
+
+                long endProduction = System.nanoTime();
+                System.out.println("Tiempo para cálculos de ProductionQuery: " + (endProduction - startProduction) / 1_000_000 + " ms");
+
+
+
+
+
+                RestTemplate restTemplate = new RestTemplate();
+
+                long startEvaluacionEconomica = System.nanoTime();
+
+                SimulacionMicros simulacionMicros = new SimulacionMicros(2643,42,gastoTriangular, declinacion, recurso, area,
+
+                        triangularInversionPlataforma, triangularInversionLineaDescarga, triangularInversionEstacionCompresion, triangularInversionDucto,
+                        triangularInversionBat,
+
+                        triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
+                        triangularDESInfra, triangularDESPer, triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers,
+                        triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
+
+
+                Object resultado = simulacionMicros.ejecutarSimulacion();
+
+                long endEvaluacionEconomica = System.nanoTime();
+
+                System.out.println("Tiempo para cálculos de EvaluacionEconomica: " + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
+
+
+
+
+                resultados.add(resultado);
+
+
+
+
+            } else {
+                fracasos++;
+
+                row.createCell(1).setCellValue("Fracaso");
+                for (int j = 2; j < headers.length; j++) {
+                    row.createCell(j).setCellValue(0);
+
+                }
+
+
+
+
+
+
+                double aleatorioExploratorioInfra = random.nextDouble();
+                double triangularExploratorioMin = triangularDistributionSinPCE(oportunidad.getInfraestructuraMin(),
+                        oportunidad.getInfraestructuraMax(),
+                        oportunidad.getInfraestructuraMP(),
+                        aleatorioExploratorioInfra);
+                ResultadoSimulacion.setExploratoriaInfra(triangularExploratorioMin);
+
+                double aleatorioExploratorioPerforacion = random.nextDouble();
+                double triangularExploratorioPer = triangularDistributionSinPCE(oportunidad.getPerforacionMin(),
+                        oportunidad.getPerforacionMax(),
+                        oportunidad.getPerforacionMP(),
+                        aleatorioExploratorioPerforacion);
+                ResultadoSimulacion.setExploratoriaPerf(triangularExploratorioPer);
+
+
+                double aleatorioExploratorioTerminacion = random.nextDouble();
+                double triangularExploratorioTer = triangularDistributionSinPCE(oportunidad.getTerminacionMin(),
+                        oportunidad.getTerminacionMax(),
+                        oportunidad.getTerminacionMP(),
+                        aleatorioExploratorioTerminacion);
+                ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
+
+
+                    RestTemplate restTemplate = new RestTemplate();
+
+                    long startEvaluacionEconomica = System.nanoTime();
+                    SimulacionMicros simulacionMicros = new SimulacionMicros(2643,42,0, 0,0 , 0,
+
+                            0, 0, 0, 0,
+                            0,
+
+                            1.2707182320442 , 80.691780546642,  13.65886,
+                            0, 0, 0, 0, 0, 0,
+                            0, 0,0, 0, restTemplate);
+                    Object resultado = simulacionMicros.ejecutarSimulacion();
+
+                long endEvaluacionEconomica = System.nanoTime();
+                System.out.println("Tiempo para cálculos de EvaluacionEconomica FRACASO: " + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
+
+
+
+
+
+
+                resultados.add(resultado);
+
+
+
+
+
+
+
+
+
+
+            }
+        }
+
+
+        System.out.println("Éxitos: " + exitos);
+        System.out.println("Fracasos: " + fracasos);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            objectMapper.writeValue(new File("resultados.json"), resultados);
+            System.out.println("Resultados guardados en resultados.json");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        // Guardar resultados en el archivo Excel
+        try (FileOutputStream fileOut = new FileOutputStream("SimulacionMonteCarlo.xlsx")) {
+            workbook.write(fileOut);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                workbook.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("Resultados guardados en SimulacionMonteCarlo.xlsx");
+
+
+        return ResponseEntity.ok(resultados);
+
+    }
+
+    private boolean pruebaGeologica() {
+        return random.nextDouble() <= Pg;
+    }
+
+    private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
+        NormalDistribution normalStandard = new NormalDistribution(0, 1);
+        double z90 = normalStandard.inverseCumulativeProbability(0.9);
+        double mediaLog = (Math.log(percentil10) + Math.log(percentil90)) / 2;
+        double desviacionLog = (Math.log(percentil10) - mediaLog) / z90;
+
+        NormalDistribution normal = new NormalDistribution(mediaLog, desviacionLog);
+
+        double logValue = normal.inverseCumulativeProbability(aleatorio);
+        return Math.exp(logValue);
+    }
+
+    public double calcularGastoInicial(double PCE, double aleatorioGasto) {
+        double gastoInicialMin = GastoInicialAceiteMin / factorConversionAceite;
+        double gastoInicialMP = GastoInicialAceiteMP / factorConversionAceite;
+        double gastoInicialMax = GastoInicialAceiteMax / factorConversionAceite;
+
+        return triangularDistribution(PCE, gastoInicialMin, gastoInicialMax, gastoInicialMP, aleatorioGasto);
+    }
+
+    private double triangularDistribution(double PCE, double gmin, double gmax, double gmp, double aleatorio) {
+        if (PCE == 0) {
+            return 0.0;
+        }
+
+        if (gmax - gmin != 0) {
+            double fraction = (gmp - gmin) / (gmax - gmin);
+            if (aleatorio < fraction) {
+                return gmin + Math.sqrt(aleatorio * (gmax - gmin) * (gmp - gmin));
+            } else {
+                return gmax - Math.sqrt((1 - aleatorio) * (gmax - gmin) * (gmax - gmp));
+            }
+        }
+        return gmin;
+    }
+
+
+    private double triangularDistributionSinPCE(double gmin, double gmax, double gmp, double aleatorio) {
+        if (gmax - gmin != 0) {
+            double fraction = (gmp - gmin) / (gmax - gmin);
+
+            if (aleatorio < fraction) {
+                return gmin + Math.sqrt(aleatorio * (gmp - gmin) * (gmax - gmin));
+            } else {
+                return gmax - Math.sqrt((1 - aleatorio) * (gmp - gmin) * (gmax - gmin));
+            }
+        }
+        return gmp;
+
+    }
+
+    private int EncuentraOCreaColumna(Row headerRow, int year) {
+        // Buscar si el año ya existe en alguna celda del encabezado
+        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+            Cell cell = headerRow.getCell(i);
+            if (cell != null && cell.getCellType() == CellType.NUMERIC && cell.getNumericCellValue() == year) {
+                return i; // Retornar el índice de la columna existente
+            }
+        }
+
+        // Si no se encuentra, crear una nueva columna
+        int newColumnIndex = headerRow.getPhysicalNumberOfCells(); // Usa las celdas físicas ocupadas
+        Cell newCell = headerRow.createCell(newColumnIndex);
+        newCell.setCellValue(year);
+        return newColumnIndex;
+    }
+
+    private void OrdenaEncabezado(Row headerRow) {
+        if (headerRow == null) {
+            System.out.println("La fila del encabezado no existe.");
+            return;
+        }
+        // Recopilar años y sus índices originales desde la columna U (índice 21)
+        List<Map.Entry<Integer, Integer>> yearIndexPairs = new ArrayList<>();
+        for (int i = 20; i < headerRow.getLastCellNum(); i++) {
+            Cell cell = headerRow.getCell(i);
+            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
+                yearIndexPairs.add(new AbstractMap.SimpleEntry<>((int) cell.getNumericCellValue(), i));
+            }
+        }
+
+        // Ordenar los pares por el valor del año
+        yearIndexPairs.sort(Comparator.comparingInt(Map.Entry::getKey));
+
+        // Reorganizar las celdas de encabezado en el orden correcto
+        for (int i = 0; i < yearIndexPairs.size(); i++) {
+            int year = yearIndexPairs.get(i).getKey();
+            headerRow.getCell(20 + i).setCellValue(year); // Reasignar los años ordenados desde la columna K
+        }
+    }
+
+
+
+}
