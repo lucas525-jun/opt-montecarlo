@@ -38,19 +38,13 @@ public class MonteCarloSimulationController {
     @Autowired
     RestTemplate restTemplate;
 
-    private SimulacionExploratoria exploratoria = new SimulacionExploratoria() ;
-    private SimulacionDesarrollo desarrollo = new SimulacionDesarrollo() ;
-    private InformacionDeInversion informacionDeInversion = new InformacionDeInversion() ;
-
 
     @GetMapping("/run")
-    public ResponseEntity<?> runSimulation(@RequestParam("IdVersion") int idVersion, @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
+    public ResponseEntity<?> runSimulation(@RequestParam("Version") String version, @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
 
 
 
-
-
-         MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(idVersion, idOportunidadObjetivo) ;
+        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo) ;
 
         try {
             // Ejecuta la simulación y obtiene los datos
@@ -91,47 +85,39 @@ public class MonteCarloSimulationController {
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error en la simulación o generación del Excel: " + e.getMessage());
+                    .body("Error en la simulación: " + e.getMessage());
         }
     }
 
 
-    @GetMapping("/runExploratoria")
-    public ResponseEntity<List<ResultadoSimulacion>> runSimulationExploratoria( ){
-        List<ResultadoSimulacion> resultados = exploratoria.runSimulation().getBody();
-        return ResponseEntity.ok(resultados);
 
+
+
+    @GetMapping("/runJson")
+    public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String version, @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
+
+        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo);
+
+
+
+
+        try {
+            // Ejecuta la simulación y obtiene los datos
+            List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
+
+            // Devuelve los resultados directamente
+            return ResponseEntity.ok(resultados);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error en la simulación: " + e.getMessage());
+        }
     }
 
-    @GetMapping("/runDesarrollo")
-    public ResponseEntity<List<ResultadoSimulacion>> runSimulationDesarrollo( ){
-        List<ResultadoSimulacion> resultados = desarrollo.runSimulation().getBody();
-        return ResponseEntity.ok(resultados);
-
-    }
 
 
-    @GetMapping("/infoInversion")
-    public ResponseEntity<List<ResultadoSimulacion>> runSimulationInfoInversion( ){
-        List<ResultadoSimulacion> resultados = informacionDeInversion.runSimulation().getBody();
-
-        return ResponseEntity.ok(resultados);
-
-    }
 
 
-    @PostMapping("/generate-excel")
-    public ResponseEntity<Resource> generateExcel(@RequestBody List<OportunidadExcel> oportunidades) throws IOException {
-        Workbook workbook = excelService.generateExcel(oportunidades);
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-        ByteArrayResource resource = new ByteArrayResource(out.toByteArray());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=datos.xlsx")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
-    }
 
 
 

@@ -17,7 +17,7 @@ import java.util.*;
 
 public class MonteCarloSimulation {
     DatabaseConnection databaseConnection = new DatabaseConnection();
-    Oportunidad oportunidad = databaseConnection.executeQuery(42, 2643); // Atributos y configuración
+    Oportunidad oportunidad = databaseConnection.executeQuery("42", 2643); // Atributos y configuración
 
     private final double Pg = oportunidad.getPg(); // Probabilidad geológica
     private final double P10 = oportunidad.getPceP10();

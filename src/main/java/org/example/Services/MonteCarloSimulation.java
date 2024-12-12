@@ -23,42 +23,27 @@ import java.util.*;
 public class MonteCarloSimulation {
 
 
-    int idVersion = 0;
+    String version = "";
     int idOportunidadObjetivo = 0;
+    Oportunidad oportunidad;
 
 
 
+    public void setOportunidad(Oportunidad oportunidad) {
+        this.oportunidad = oportunidad;
+    }
 
-    public MonteCarloSimulation(int IdVersion, int idOportunidadObjetivo) {
 
-        this.idVersion = IdVersion;
+    public MonteCarloSimulation(String version, int idOportunidadObjetivo) {
+
+        this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
-
 
     }
 
 
 
-    DatabaseConnection databaseConnection = new DatabaseConnection();
-    Oportunidad oportunidad = databaseConnection.executeQuery(42, 2643); // Atributos y configuración
-
     long startSimulacion = System.nanoTime();
-
-    private final double Pg = oportunidad.getPg(); // Probabilidad geológica
-    private final double P10 = oportunidad.getPceP10();
-    private final double P90 = oportunidad.getPceP90();
-    private final double P10Area = oportunidad.getArea10();
-    private final double P90Area = oportunidad.getArea90();
-    private final double factorConversionAceite = oportunidad.getFcAceite();
-    private final double factorConversionGas = oportunidad.getFcGas();
-    private final double factorCondensado = oportunidad.getFcCondensado();
-    private final double GastoInicialAceiteMin = oportunidad.getGastoMINAceite();
-    private final double GastoInicialAceiteMP = oportunidad.getGastoMPAceite();
-    private final double GastoInicialAceiteMax = oportunidad.getGastoMAXAceite();
-    private final double PrimeraDeclinacionMin = oportunidad.getPrimeraDeclinacionMin();
-    private final double PrimeraDeclinacionMP = oportunidad.getPrimeraDeclinacionMP();
-    private final double PrimeraDeclinacionMax = oportunidad.getPrimeraDeclinacionMAX();
-    private final InversionOportunidad inversionOportunidad = oportunidad.getInversionOportunidad();
 
 
     double triangularInversionBat, triangularInversionPlataforma, triangularInversionLineaDescarga;
@@ -66,11 +51,13 @@ public class MonteCarloSimulation {
     double triangularInversionManifolds, triangularInversionRisers, triangularInversionSistemasDeControl;
     double triangularInversionCubiertaDeProces, triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta;
 
-
-
     private Random random = new Random();
 
     public ResponseEntity<List<Object>> runSimulation() {
+
+        DatabaseConnection databaseConnection = new DatabaseConnection();
+        Oportunidad oportunidad = databaseConnection.executeQuery(version, idOportunidadObjetivo); // Atributos y configuraciónSystem.out.println(aleatorioRecurso);
+        setOportunidad(oportunidad);
 
         int exitos = 0;
         int fracasos = 0;
@@ -116,7 +103,7 @@ public class MonteCarloSimulation {
         }
 
         // Iterar simulaciones
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             Row row = sheet.createRow(i + 1);
             row.createCell(0).setCellValue(i + 1); // Iteración número
             valores++;
@@ -131,7 +118,7 @@ public class MonteCarloSimulation {
 
 // Valores aleatorios y cálculos para éxito
                 double aleatorioRecurso = 0.01 + (0.99 - 0.01) * Math.random();
-                double recurso = calcularRecursoProspectivo(aleatorioRecurso, P10, P90);
+                double recurso = calcularRecursoProspectivo(aleatorioRecurso, oportunidad.getPceP10(), oportunidad.getPceP90());
                 row.createCell(2).setCellValue(aleatorioRecurso);
                 row.createCell(3).setCellValue(recurso);
                 ResultadoSimulacion.setPce(recurso);
@@ -175,7 +162,7 @@ public class MonteCarloSimulation {
                 long startArea = System.nanoTime();
 
                 double aleatorioArea = 0.01 + (0.99 - 0.01) * Math.random();
-                double area = calcularRecursoProspectivo(aleatorioArea, P10Area, P90Area);
+                double area = calcularRecursoProspectivo(aleatorioArea, oportunidad.getArea10(), oportunidad.getArea90());
                 row.createCell(8).setCellValue(aleatorioArea);
                 row.createCell(9).setCellValue(area);
                 ResultadoSimulacion.setArea(area);
@@ -252,121 +239,121 @@ public class MonteCarloSimulation {
 
                 long startInversion = System.nanoTime();
 
-                if (inversionOportunidad.getBateriaMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getBateriaMin() != 0) {
                     double AleatorioInverision = random.nextDouble();
-                             triangularInversionBat = triangularDistribution(recurso, inversionOportunidad.getBateriaMin(),
-                            inversionOportunidad.getBateriaMax(),
-                            inversionOportunidad.getBateriaMp(),
+                             triangularInversionBat = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getBateriaMin(),
+                                     oportunidad.getInversionOportunidad().getBateriaMax(),
+                                     oportunidad.getInversionOportunidad().getBateriaMp(),
                             AleatorioInverision);
                     row.createCell(16).setCellValue(triangularInversionBat);
                     ResultadoSimulacion.setBateria(triangularInversionBat);
                 }
 
-                if (inversionOportunidad.getPlataformadesarrolloMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getPlataformadesarrolloMin() != 0) {
                     double AleatorioInverision = random.nextDouble();
-                            triangularInversionPlataforma = triangularDistribution(recurso, inversionOportunidad.getPlataformadesarrolloMin(),
-                            inversionOportunidad.getPlataformadesarrolloMax(),
-                            inversionOportunidad.getPlataformadesarrolloMp(),
+                            triangularInversionPlataforma = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getPlataformadesarrolloMin(),
+                                    oportunidad.getInversionOportunidad().getPlataformadesarrolloMax(),
+                                    oportunidad.getInversionOportunidad().getPlataformadesarrolloMp(),
                             AleatorioInverision);
                     row.createCell(17).setCellValue(triangularInversionPlataforma);
                     ResultadoSimulacion.setPlataformaDesarrollo(triangularInversionPlataforma);
                 }
 
-                if (inversionOportunidad.getLineadedescargaMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getLineadedescargaMin() != 0) {
                     double AleatorioInverision = random.nextDouble();
-                            triangularInversionLineaDescarga = triangularDistribution(recurso, inversionOportunidad.getLineadedescargaMin(),
-                            inversionOportunidad.getLineadedescargaMax(),
-                            inversionOportunidad.getLineadedescargaMp(),
+                            triangularInversionLineaDescarga = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getLineadedescargaMin(),
+                                    oportunidad.getInversionOportunidad().getLineadedescargaMax(),
+                                    oportunidad.getInversionOportunidad().getLineadedescargaMp(),
                             AleatorioInverision);
                     row.createCell(18).setCellValue(triangularInversionLineaDescarga);
                     ResultadoSimulacion.setLineaDescarga(triangularInversionLineaDescarga);
                 }
 
-                if (inversionOportunidad.getEstacioncompresionMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getEstacioncompresionMin() != 0) {
                     double AleatorioInverision = random.nextDouble();
-                            triangularInversionEstacionCompresion = triangularDistribution(recurso, inversionOportunidad.getEstacioncompresionMin(),
-                            inversionOportunidad.getEstacioncompresionMax(),
-                            inversionOportunidad.getEstacioncompresionMp(),
+                            triangularInversionEstacionCompresion = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getEstacioncompresionMin(),
+                                    oportunidad.getInversionOportunidad().getEstacioncompresionMax(),
+                                    oportunidad.getInversionOportunidad().getEstacioncompresionMp(),
                             AleatorioInverision);
                     row.createCell(19).setCellValue(triangularInversionEstacionCompresion);
                     ResultadoSimulacion.setEComprension(triangularInversionEstacionCompresion);
                 }
 
-                if (inversionOportunidad.getDuctoMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getDuctoMin() != 0) {
                     double AleatorioInverision = random.nextDouble();
-                            triangularInversionDucto = triangularDistribution(recurso, inversionOportunidad.getDuctoMin(),
-                            inversionOportunidad.getDuctoMax(),
-                            inversionOportunidad.getDuctoMp(),
+                            triangularInversionDucto = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getDuctoMin(),
+                                    oportunidad.getInversionOportunidad().getDuctoMax(),
+                                    oportunidad.getInversionOportunidad().getDuctoMp(),
                             AleatorioInverision);
                     row.createCell(20).setCellValue(triangularInversionDucto);
                     ResultadoSimulacion.setDucto(triangularInversionDucto);
                 }
 
-                if (inversionOportunidad.getArbolessubmarinosMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getArbolessubmarinosMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionArbolesSubmarinos = triangularDistribution(recurso, inversionOportunidad.getArbolessubmarinosMin(),
-                            inversionOportunidad.getArbolessubmarinosMax(),
-                            inversionOportunidad.getArbolessubmarinosMp(),
+                            triangularInversionArbolesSubmarinos = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getArbolessubmarinosMin(),
+                                    oportunidad.getInversionOportunidad().getArbolessubmarinosMax(),
+                                    oportunidad.getInversionOportunidad().getArbolessubmarinosMp(),
                             AleatorioInversion);
                     row.createCell(21).setCellValue(triangularInversionArbolesSubmarinos);
                     ResultadoSimulacion.setArbolesSubmarinos(triangularInversionArbolesSubmarinos);
                 }
 
-                if (inversionOportunidad.getManifoldsMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getManifoldsMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionManifolds = triangularDistribution(recurso, inversionOportunidad.getManifoldsMin(),
-                            inversionOportunidad.getManifoldsMax(),
-                            inversionOportunidad.getManifoldsMp(),
+                            triangularInversionManifolds = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getManifoldsMin(),
+                                    oportunidad.getInversionOportunidad().getManifoldsMax(),
+                                    oportunidad.getInversionOportunidad().getManifoldsMp(),
                             AleatorioInversion);
                     row.createCell(22).setCellValue(triangularInversionManifolds);
                     ResultadoSimulacion.setManifolds(triangularInversionManifolds);
                 }
 
-                if (inversionOportunidad.getRisersMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getRisersMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionRisers = triangularDistribution(recurso, inversionOportunidad.getRisersMin(),
-                            inversionOportunidad.getRisersMax(),
-                            inversionOportunidad.getRisersMp(),
+                            triangularInversionRisers = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getRisersMin(),
+                                    oportunidad.getInversionOportunidad().getRisersMax(),
+                                    oportunidad.getInversionOportunidad().getRisersMp(),
                             AleatorioInversion);
                     row.createCell(23).setCellValue(triangularInversionRisers);
                     ResultadoSimulacion.setRisers(triangularInversionRisers);
                 }
 
-                if (inversionOportunidad.getSistemasdecontrolMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getSistemasdecontrolMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionSistemasDeControl = triangularDistribution(recurso, inversionOportunidad.getSistemasdecontrolMin(),
-                            inversionOportunidad.getSistemasdecontrolMax(),
-                            inversionOportunidad.getSistemasdecontrolMp(),
+                            triangularInversionSistemasDeControl = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getSistemasdecontrolMin(),
+                                    oportunidad.getInversionOportunidad().getSistemasdecontrolMax(),
+                                    oportunidad.getInversionOportunidad().getSistemasdecontrolMp(),
                             AleatorioInversion);
                     row.createCell(24).setCellValue(triangularInversionSistemasDeControl);
                     ResultadoSimulacion.setSistemasDeControl(triangularInversionSistemasDeControl);
                 }
 
-                if (inversionOportunidad.getCubiertadeprocesMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getCubiertadeprocesMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionCubiertaDeProces = triangularDistribution(recurso, inversionOportunidad.getCubiertadeprocesMin(),
-                            inversionOportunidad.getCubiertadeprocesMax(),
-                            inversionOportunidad.getCubiertadeprocesMp(),
+                            triangularInversionCubiertaDeProces = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getCubiertadeprocesMin(),
+                                    oportunidad.getInversionOportunidad().getCubiertadeprocesMax(),
+                                    oportunidad.getInversionOportunidad().getCubiertadeprocesMp(),
                             AleatorioInversion);
                     row.createCell(25).setCellValue(triangularInversionCubiertaDeProces);
                     ResultadoSimulacion.setCubiertaDeProces(triangularInversionCubiertaDeProces);
                 }
 
-                if (inversionOportunidad.getBuquetanquecompraMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getBuquetanquecompraMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionBuqueTanqueCompra = triangularDistribution(recurso, inversionOportunidad.getBuquetanquecompraMin(),
-                            inversionOportunidad.getBuquetanquecompraMax(),
-                            inversionOportunidad.getBuquetanquecompraMp(),
+                            triangularInversionBuqueTanqueCompra = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getBuquetanquecompraMin(),
+                                    oportunidad.getInversionOportunidad().getBuquetanquecompraMax(),
+                                    oportunidad.getInversionOportunidad().getBuquetanquecompraMp(),
                             AleatorioInversion);
                     row.createCell(26).setCellValue(triangularInversionBuqueTanqueCompra);
                     ResultadoSimulacion.setBuqueTanqueCompra(triangularInversionBuqueTanqueCompra);
                 }
 
-                if (inversionOportunidad.getBuquetanquerentaMin() != 0) {
+                if (oportunidad.getInversionOportunidad().getBuquetanquerentaMin() != 0) {
                     double AleatorioInversion = random.nextDouble();
-                            triangularInversionBuqueTanqueRenta = triangularDistribution(recurso, inversionOportunidad.getBuquetanquerentaMin(),
-                            inversionOportunidad.getBuquetanquerentaMax(),
-                            inversionOportunidad.getBuquetanquerentaMp(),
+                            triangularInversionBuqueTanqueRenta = triangularDistribution(recurso, oportunidad.getInversionOportunidad().getBuquetanquerentaMin(),
+                                    oportunidad.getInversionOportunidad().getBuquetanquerentaMax(),
+                                    oportunidad.getInversionOportunidad().getBuquetanquerentaMp(),
                             AleatorioInversion);
                     row.createCell(27).setCellValue(triangularInversionBuqueTanqueRenta);
                     ResultadoSimulacion.setBuqueTanqueRenta(triangularInversionBuqueTanqueRenta);
@@ -537,7 +524,7 @@ public class MonteCarloSimulation {
     }
 
     private boolean pruebaGeologica() {
-        return random.nextDouble() <= Pg;
+        return random.nextDouble() <= oportunidad.getPg();
     }
 
     private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
@@ -553,9 +540,9 @@ public class MonteCarloSimulation {
     }
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {
-        double gastoInicialMin = GastoInicialAceiteMin / factorConversionAceite;
-        double gastoInicialMP = GastoInicialAceiteMP / factorConversionAceite;
-        double gastoInicialMax = GastoInicialAceiteMax / factorConversionAceite;
+        double gastoInicialMin = oportunidad.getGastoMINAceite() / oportunidad.getFcAceite();
+        double gastoInicialMP =  oportunidad.getGastoMPAceite() / oportunidad.getFcAceite();
+        double gastoInicialMax = oportunidad.getGastoMAXAceite() / oportunidad.getFcAceite();
 
         return triangularDistribution(PCE, gastoInicialMin, gastoInicialMax, gastoInicialMP, aleatorioGasto);
     }

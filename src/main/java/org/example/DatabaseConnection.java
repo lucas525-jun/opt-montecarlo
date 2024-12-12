@@ -29,7 +29,7 @@ public class DatabaseConnection {
         return conn;
     }
 
-    public static Oportunidad executeQuery(int idVersion, int idOportunidadObjetivo) {
+    public static Oportunidad executeQuery(String version, int idOportunidadObjetivo) {
         Connection connection = connect();
 
         double pce10 = 0;
@@ -47,6 +47,19 @@ public class DatabaseConnection {
         double primDeclinacionMIN = 0, primDeclinacionMP = 0, primDeclinacionMAX = 0;
 
         if (connection != null) {
+
+
+            String idVersionQuery = """
+                    
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
+                    
+                    """;
+
+
+
+
+
+
             String oportunidadObjetivoQuery = """
         SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg 
         FROM catalogo.claveobjetivovw 
@@ -106,7 +119,8 @@ public class DatabaseConnection {
 
             Oportunidad oportunidadObj = null;
 
-            try (PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
+                 PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
                  PreparedStatement statement2 = connection.prepareStatement(VolumetriaQuery);
                  PreparedStatement statement3 = connection.prepareStatement(GastoInicialQuery);
                  PreparedStatement statement4 = connection.prepareStatement(DeclinacionQuery);
@@ -118,7 +132,26 @@ public class DatabaseConnection {
 
             ) {
 
-                statement1.setInt(1, idVersion);
+                preparedStatement.setString(1, version);
+
+                ResultSet preparedStatementQuery = preparedStatement.executeQuery();
+                int actualIdVersion = 0;  // Valor por defecto
+                if (preparedStatementQuery.next()) {
+                    actualIdVersion = preparedStatementQuery.getInt("idversion");
+                    System.out.println("----------------");
+                    System.out.println(actualIdVersion);
+                    System.out.println("----------------");
+
+                } else {
+                    System.err.println("No se encontró idVersion para la versión 'VersionMontecarlos1'.");
+                    return null;
+                }
+
+
+
+
+
+                statement1.setInt(1, actualIdVersion);
                 statement1.setInt(2, idOportunidadObjetivo);
 
                 ResultSet resultSet1 = statement1.executeQuery();
@@ -131,7 +164,7 @@ public class DatabaseConnection {
                     double pg = resultSet1.getDouble("pg");
 
                     // Volumetria Query
-                    statement2.setInt(1, idVersion);
+                    statement2.setInt(1, actualIdVersion);
                     statement2.setInt(2, idOportunidadObjetivo);
                     ResultSet resultSet2 = statement2.executeQuery();
 
@@ -153,7 +186,7 @@ public class DatabaseConnection {
 
                     // GastoInicial Query
                     statement3.setInt(1, 2117);
-                    statement3.setInt(2, idVersion);
+                    statement3.setInt(2, actualIdVersion);
 
                     ResultSet resultSet3 = statement3.executeQuery();
 
@@ -178,7 +211,7 @@ public class DatabaseConnection {
                     }
 
                     statement4.setInt(1, idOportunidadObjetivo);
-                    statement4.setInt(2, idVersion);
+                    statement4.setInt(2, actualIdVersion);
 
                     ResultSet resultSet4 = statement4.executeQuery();
 
@@ -202,7 +235,7 @@ public class DatabaseConnection {
                     }
 
                     statement5.setInt(1, idOportunidadObjetivo);
-                    statement5.setInt(2, idVersion);
+                    statement5.setInt(2, actualIdVersion);
                     ResultSet resultSet5 = statement5.executeQuery();
 
                     if (resultSet5.next()) {
@@ -211,7 +244,7 @@ public class DatabaseConnection {
                         fcCondensado = resultSet5.getDouble("fc_condensado");
                     }
 
-                    statement6.setInt(1, idVersion);
+                    statement6.setInt(1, actualIdVersion);
                     statement6.setInt(2, idOportunidadObjetivo);
 
                     ResultSet resultSet6 = statement6.executeQuery();
@@ -250,7 +283,7 @@ public class DatabaseConnection {
 
 
 
-                    statement7.setInt(1, idVersion);
+                    statement7.setInt(1, actualIdVersion);
                     statement7.setInt(2, idOportunidadObjetivo);
 
                     ResultSet resultSet7 = statement7.executeQuery();
@@ -345,7 +378,7 @@ public class DatabaseConnection {
                     double buquetanquerentaMax = 0.0;
 
 // Asumiendo que la consulta ya fue configurada y ejecutada
-                    statement8.setInt(1, idVersion);
+                    statement8.setInt(1, actualIdVersion);
                     statement8.setInt(2, idOportunidadObjetivo);
 
                     ResultSet resultSet8 = statement8.executeQuery();
@@ -467,11 +500,29 @@ public class DatabaseConnection {
     public static Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota, double declinada, double pce, double area) {
         Map<Integer, Double> resultMap = new HashMap<>();
         String productionQuery = "SELECT aanio, ctotalanual FROM calculo.spp_produccionanual(?, ?, ?, ?, ?, ?)";
+        String idVersionQuery = """
+                    
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = 'VersionMontecarlos1'      
+                    
+                    """;
+
+
 
         try (Connection connection = connect();
+             PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
              PreparedStatement statement = connection.prepareStatement(productionQuery)) {
 
-            statement.setInt(1, idVersion);
+
+            ResultSet preparedStatementQuery = preparedStatement.executeQuery();
+            int actualIdVersion = idVersion;  // Valor por defecto
+            if (preparedStatementQuery.next()) {
+                actualIdVersion = preparedStatementQuery.getInt("idversion");
+            } else {
+                System.err.println("No se encontró idVersion para la versión 'VersionMontecarlos1'.");
+                return null;
+            }
+
+            statement.setInt(1, actualIdVersion);
             statement.setInt(2, idOportunidadObjetivo);
             statement.setDouble(3, cuota);
             statement.setDouble(4, declinada);
