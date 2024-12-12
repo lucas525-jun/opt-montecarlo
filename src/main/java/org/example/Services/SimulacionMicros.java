@@ -153,7 +153,7 @@ public class SimulacionMicros {
     public Object ejecutarSimulacion() {
         try {
             String url = String.format(
-                    "http://localhost:8082/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
+                    "http://host.docker.internal:8082/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
                     idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga, estacionCompresion,
                     ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer, triangularDESInfra, triangularDESPer,
                     triangularDESTer, arbolesSubmarinos, manifolds, risers, sistemasDeControl, cubiertaDeProceso, buquetaqueCompra,
