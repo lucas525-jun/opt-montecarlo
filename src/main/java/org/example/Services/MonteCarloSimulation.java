@@ -103,7 +103,7 @@ public class MonteCarloSimulation {
         }
 
         // Iterar simulaciones
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1000; i++) {
             Row row = sheet.createRow(i + 1);
             row.createCell(0).setCellValue(i + 1); // Iteración número
             valores++;
@@ -394,7 +394,7 @@ public class MonteCarloSimulation {
 
                 long startEvaluacionEconomica = System.nanoTime();
 
-                SimulacionMicros simulacionMicros = new SimulacionMicros(2643,42,gastoTriangular, declinacion, recurso, area,
+                SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),gastoTriangular, declinacion, recurso, area,
 
                         triangularInversionPlataforma, triangularInversionLineaDescarga, triangularInversionEstacionCompresion, triangularInversionDucto,
                         triangularInversionBat,
@@ -458,7 +458,7 @@ public class MonteCarloSimulation {
                     RestTemplate restTemplate = new RestTemplate();
 
                     long startEvaluacionEconomica = System.nanoTime();
-                    SimulacionMicros simulacionMicros = new SimulacionMicros(2643,42,0, 0,0 , 0,
+                    SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),0, 0,0 , 0,
 
                             0, 0, 0, 0,
                             0,
@@ -540,9 +540,36 @@ public class MonteCarloSimulation {
     }
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {
-        double gastoInicialMin = oportunidad.getGastoMINAceite() / oportunidad.getFcAceite();
-        double gastoInicialMP =  oportunidad.getGastoMPAceite() / oportunidad.getFcAceite();
-        double gastoInicialMax = oportunidad.getGastoMAXAceite() / oportunidad.getFcAceite();
+
+        double gastoInicialMin = 0.0;
+        double gastoInicialMP = 0.0;
+        double gastoInicialMax = 0.0;
+
+
+
+
+
+        if (oportunidad.getIdHidrocarburo() == 1 || oportunidad.getIdHidrocarburo() == 2 || oportunidad.getIdHidrocarburo() == 4 || oportunidad.getIdHidrocarburo() == 6 ) {
+            
+            gastoInicialMin = oportunidad.getGastoMINAceite() / oportunidad.getFcAceite();
+            gastoInicialMP =  oportunidad.getGastoMPAceite() / oportunidad.getFcAceite();
+            gastoInicialMax = oportunidad.getGastoMAXAceite() / oportunidad.getFcAceite();
+
+        } else if (oportunidad.getIdHidrocarburo() == 3 || oportunidad.getIdHidrocarburo() == 5 || oportunidad.getIdHidrocarburo() == 7 || oportunidad.getIdHidrocarburo() == 9) {
+
+            gastoInicialMin = oportunidad.getGastoMINAceite() / oportunidad.getFcGas();
+            gastoInicialMP = oportunidad.getGastoMPAceite() / oportunidad.getFcGas();
+            gastoInicialMax = oportunidad.getGastoMAXAceite() / oportunidad.getFcGas();
+            
+        } else {
+
+            gastoInicialMin = oportunidad.getGastoMINAceite() / oportunidad.getFcCondensado();
+            gastoInicialMP = oportunidad.getGastoMPAceite() / oportunidad.getFcCondensado();
+            gastoInicialMax = oportunidad.getGastoMAXAceite() / oportunidad.getFcCondensado();
+
+
+        }
+
 
         return triangularDistribution(PCE, gastoInicialMin, gastoInicialMax, gastoInicialMP, aleatorioGasto);
     }

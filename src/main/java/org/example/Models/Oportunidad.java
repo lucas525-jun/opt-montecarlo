@@ -2,6 +2,7 @@ package org.example.Models;
 
 public class Oportunidad {
 
+    private int actualIdVersion;
     private int idOportunidadObjetivo; // ID del objetivo de oportunidad
     private String oportunidad;          // Descripción de la oportunidad
     private double pceP10;
@@ -15,6 +16,12 @@ public class Oportunidad {
     private double gastoMINAceite;       // Gasto asociado al tipo de valor MIN Aceite
     private double gastoMPAceite;        // Gasto asociado al tipo de valor MP Aceite
     private double gastoMAXAceite;       // Gasto asociado al tipo de valor MAX Aceite
+
+
+    private int idhidrocarburo;
+
+
+
 
     private double primeraDeclinacionMin;
     private double primeraDeclinacionMP;
@@ -34,9 +41,10 @@ public class Oportunidad {
     InversionOportunidad inversionOportunidad;
 
     // Constructor actualizado
-    public Oportunidad(int idOportunidadObjetivo, String oportunidad, double pceP10, double pceP90,
+    public Oportunidad(int actualIdVersion,  int idOportunidadObjetivo, String oportunidad, double pceP10, double pceP90,
                        double area10, double area90, String hidrocarburo, String tipoOportunidad, double pg,
                        double gastoMINAceite, double gastoMPAceite, double gastoMAXAceite,
+                       int idhidrocarburo,
                        double primDeclinacionMIN, double primDeclinacionMP, double primDeclinacionMAX,
                        double fcAceite, double fcGas, double fcCondensado,
                        double infraestructuraMin, double infraestructuraMP, double infraestructuraMax,
@@ -46,6 +54,8 @@ public class Oportunidad {
                        double perforacionMinDES, double perforacionMPDES, double perforacionMaxDES,
                        double terminacionMinDES, double terminacionMPDES, double terminacionMaxDES,
                        InversionOportunidad inversionOportunidad) {
+
+        this.actualIdVersion = actualIdVersion;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
         this.oportunidad = oportunidad;
         this.pceP10 = pceP10;
@@ -61,6 +71,7 @@ public class Oportunidad {
         this.primeraDeclinacionMin = primDeclinacionMIN;
         this.primeraDeclinacionMP = primDeclinacionMP;
         this.primeraDeclinacionMAX = primDeclinacionMAX;
+        this.idhidrocarburo = idhidrocarburo;
         this.fcAceite = fcAceite;
         this.fcGas = fcGas;
         this.fcCondensado = fcCondensado;
@@ -104,6 +115,11 @@ public class Oportunidad {
     public double getGastoMINAceite() { return gastoMINAceite; }
     public double getGastoMPAceite() { return gastoMPAceite; }
     public double getGastoMAXAceite() { return gastoMAXAceite; }
+
+
+    public double getIdHidrocarburo() { return idhidrocarburo; }
+
+
     public double getFcAceite() { return fcAceite; }
     public double getFcGas() { return fcGas; }
     public double getFcCondensado() { return fcCondensado; }
@@ -132,6 +148,9 @@ public class Oportunidad {
     public double getTerminacionMinDES() { return terminacionMinDES; }
     public double getTerminacionMPDES() { return terminacionMPDES; }
     public double getTerminacionMaxDES() { return terminacionMaxDES; }
+
+
+    public int getActualIdVersion() {return actualIdVersion;}
 
     public InversionOportunidad getInversionOportunidad(){ return inversionOportunidad; }
 

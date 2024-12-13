@@ -61,9 +61,9 @@ public class DatabaseConnection {
 
 
             String oportunidadObjetivoQuery = """
-        SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg 
-        FROM catalogo.claveobjetivovw 
-        WHERE idversion = ? AND idoportunidadobjetivo = ?
+                SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo
+                FROM catalogo.claveobjetivovw\s
+                WHERE idversion = ? AND idoportunidadobjetivo = ?
         """;
 
             String VolumetriaQuery = """
@@ -73,7 +73,7 @@ public class DatabaseConnection {
         """;
 
             String GastoInicialQuery = """
-        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion 
+        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo           
         FROM catalogo.gastoinicialoportunidadvw 
         WHERE idtipovalor IN (1, 2, 3) AND idoportunidad = ? AND idversion = ?
         """;
@@ -118,6 +118,7 @@ public class DatabaseConnection {
 
 
             Oportunidad oportunidadObj = null;
+            int idhidrocarburo = 0;
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
                  PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
@@ -161,6 +162,7 @@ public class DatabaseConnection {
                     String oportunidad = resultSet1.getString("oportunidad");
                     String hidrocarburo = resultSet1.getString("hidrocarburo");
                     String tipoOportunidad = resultSet1.getString("tipooportunidad");
+                    int idhidrocarburoo = resultSet1.getInt("idhidrocarburo");
                     double pg = resultSet1.getDouble("pg");
 
                     // Volumetria Query
@@ -193,6 +195,8 @@ public class DatabaseConnection {
                     while (resultSet3.next()) {
                         String tipoValor = resultSet3.getString("tipovalor");
                         double gasto = resultSet3.getDouble("gasto");
+                        idhidrocarburo = resultSet1.getInt("idhidrocarburo");
+
 
                         switch (tipoValor) {
                             case "MIN":
@@ -461,8 +465,8 @@ public class DatabaseConnection {
 
 
                     oportunidadObj = new Oportunidad(
-                            idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
-                            hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX,
+                            actualIdVersion,idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
+                            hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
                             primDeclinacionMIN, primDeclinacionMP, primDeclinacionMAX, fcAceite, fcGas, fcCondensado,
                             infraestructuraMin, infraestructuraMP, infraestructuraMax,
                             perforacionMin, perforacionMP, perforacionMax,
