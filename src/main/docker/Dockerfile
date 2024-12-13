@@ -8,7 +8,7 @@ ADD . .
 #COPY pom.xml .
 #COPY src src
 
-RUN mvn package -DskipTests
+#RUN mvn package -DskipTests
 
 # Use a smaller base image to run the application
 FROM openjdk:17-jdk AS runtime
