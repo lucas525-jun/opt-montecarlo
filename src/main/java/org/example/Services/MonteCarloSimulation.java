@@ -437,6 +437,7 @@ public class MonteCarloSimulation {
                         oportunidad.getInfraestructuraMax(),
                         oportunidad.getInfraestructuraMP(),
                         aleatorioExploratorioInfra);
+                row.createCell(10).setCellValue(triangularExploratorioMin);
                 ResultadoSimulacion.setExploratoriaInfra(triangularExploratorioMin);
 
                 double aleatorioExploratorioPerforacion = random.nextDouble();
@@ -444,6 +445,7 @@ public class MonteCarloSimulation {
                         oportunidad.getPerforacionMax(),
                         oportunidad.getPerforacionMP(),
                         aleatorioExploratorioPerforacion);
+                row.createCell(11).setCellValue(triangularExploratorioPer);
                 ResultadoSimulacion.setExploratoriaPerf(triangularExploratorioPer);
 
 
@@ -452,6 +454,7 @@ public class MonteCarloSimulation {
                         oportunidad.getTerminacionMax(),
                         oportunidad.getTerminacionMP(),
                         aleatorioExploratorioTerminacion);
+                row.createCell(12).setCellValue(triangularExploratorioTer);
                 ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
 
 

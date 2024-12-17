@@ -75,7 +75,7 @@ public class DatabaseConnection {
             String GastoInicialQuery = """
         SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo           
         FROM catalogo.gastoinicialoportunidadvw 
-        WHERE idtipovalor IN (1, 2, 3) AND idoportunidad = ? AND idversion = ?
+        WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
         """;
 
 
@@ -187,7 +187,7 @@ public class DatabaseConnection {
 
 
                     // GastoInicial Query
-                    statement3.setInt(1, 2117);
+                    statement3.setInt(1, idOportunidadObjetivo);
                     statement3.setInt(2, actualIdVersion);
 
                     ResultSet resultSet3 = statement3.executeQuery();
