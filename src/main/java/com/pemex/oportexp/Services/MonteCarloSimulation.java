@@ -101,7 +101,7 @@ public class MonteCarloSimulation {
         }
 
         // Iterar simulaciones
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 500; i++) {
             Row row = sheet.createRow(i + 1);
             row.createCell(0).setCellValue(i + 1); // Iteración número
             valores++;
@@ -114,7 +114,7 @@ public class MonteCarloSimulation {
 
                 long startRecursoProspectivo = System.nanoTime(); // Tiempo inicial de toda la iteración
 
-// Valores aleatorios y cálculos para éxito
+                // Valores aleatorios y cálculos para éxito
                 double aleatorioRecurso = 0.01 + (0.99 - 0.01) * Math.random();
                 double recurso = calcularRecursoProspectivo(aleatorioRecurso, oportunidad.getPceP10(), oportunidad.getPceP90());
                 row.createCell(2).setCellValue(aleatorioRecurso);
@@ -168,8 +168,6 @@ public class MonteCarloSimulation {
                 long endArea = System.nanoTime();
                 System.out.println("Tiempo para cálculos de Area: " + (endArea - startArea) / 1_000_000 + " ms");
 
-
-
                 long startExploratorio = System.nanoTime();
 
                 double aleatorioExploratorioInfra = random.nextDouble();
@@ -188,7 +186,6 @@ public class MonteCarloSimulation {
                 row.createCell(11).setCellValue(triangularExploratorioPer);
                 ResultadoSimulacion.setExploratoriaPerf(triangularExploratorioPer);
 
-
                 double aleatorioExploratorioTerminacion = random.nextDouble();
                 double triangularExploratorioTer = triangularDistributionSinPCE(oportunidad.getTerminacionMin(),
                         oportunidad.getTerminacionMax(),
@@ -200,8 +197,6 @@ public class MonteCarloSimulation {
                 long endExploratorio = System.nanoTime();
                 System.out.println("Tiempo para cálculos de Exploratorio: " + (endExploratorio - startExploratorio) / 1_000_000 + " ms");
 
-
-
                 long startDesarrollo = System.nanoTime();
 
                 double aleatorioDesInfra = random.nextDouble();
@@ -212,7 +207,6 @@ public class MonteCarloSimulation {
                 row.createCell(13).setCellValue(triangularDESInfra);
                 ResultadoSimulacion.setDesarrolloInfra(triangularDESInfra);
 
-
                 double aleatorioDesPer = random.nextDouble();
                 double triangularDESPer = triangularDistribution(recurso, oportunidad.getPerforacionMinDES(),
                         oportunidad.getPerforacionMaxDES(),
@@ -220,7 +214,6 @@ public class MonteCarloSimulation {
                         aleatorioDesPer);
                 row.createCell(14).setCellValue(triangularDESPer);
                 ResultadoSimulacion.setDesarrolloPerf(triangularDESPer);
-
 
                 double aleatorioDesTer = random.nextDouble();
                 double triangularDESTer = triangularDistribution(recurso, oportunidad.getTerminacionMinDES(),
@@ -230,10 +223,8 @@ public class MonteCarloSimulation {
                 row.createCell(15).setCellValue(triangularDESTer);
                 ResultadoSimulacion.setDesarrolloTer(triangularDESTer);
 
-
                 long endDesarrollo = System.nanoTime();
                 System.out.println("Tiempo para cálculos de Desarrollo: " + (endDesarrollo - startDesarrollo) / 1_000_000 + " ms");
-
 
                 long startInversion = System.nanoTime();
 
@@ -357,14 +348,8 @@ public class MonteCarloSimulation {
                     ResultadoSimulacion.setBuqueTanqueRenta(triangularInversionBuqueTanqueRenta);
                 }
 
-
-
-
-
                 long endInversion = System.nanoTime();
                 System.out.println("Tiempo para cálculos de Inversion: " + (endInversion - startInversion) / 1_000_000 + " ms");
-
-
 
                 long startProduction = System.nanoTime();
                 // Llamada a productionQuery y almacenamiento del resultado
@@ -377,26 +362,17 @@ public class MonteCarloSimulation {
 
                     CtoAnualResultado CtoAnualRes = new CtoAnualResultado(anio, ctoAnual);
                     ResultadoSimulacion.getCtoAnualList().add(CtoAnualRes);
-
-
                 }
 
                 long endProduction = System.nanoTime();
                 System.out.println("Tiempo para cálculos de ProductionQuery: " + (endProduction - startProduction) / 1_000_000 + " ms");
-
-
-
-
-
                 RestTemplate restTemplate = new RestTemplate();
 
                 long startEvaluacionEconomica = System.nanoTime();
 
                 SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),gastoTriangular, declinacion, recurso, area,
-
                         triangularInversionPlataforma, triangularInversionLineaDescarga, triangularInversionEstacionCompresion, triangularInversionDucto,
                         triangularInversionBat,
-
                         triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
                         triangularDESInfra, triangularDESPer, triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers,
                         triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
@@ -407,15 +383,7 @@ public class MonteCarloSimulation {
                 long endEvaluacionEconomica = System.nanoTime();
 
                 System.out.println("Tiempo para cálculos de EvaluacionEconomica: " + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
-
-
-
-
                 resultados.add(resultado);
-
-
-
-
             } else {
                 fracasos++;
 
@@ -424,11 +392,6 @@ public class MonteCarloSimulation {
                     row.createCell(j).setCellValue(0);
 
                 }
-
-
-
-
-
 
                 double aleatorioExploratorioInfra = random.nextDouble();
                 double triangularExploratorioMin = triangularDistributionSinPCE(oportunidad.getInfraestructuraMin(),
@@ -455,39 +418,22 @@ public class MonteCarloSimulation {
                 row.createCell(12).setCellValue(triangularExploratorioTer);
                 ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
 
-
                     RestTemplate restTemplate = new RestTemplate();
 
                     long startEvaluacionEconomica = System.nanoTime();
                     SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),0, 0,0 , 0,
-
                             0, 0, 0, 0,
-                            0,
-
-                            1.2707182320442 , 80.691780546642,  13.65886,
-                            0, 0, 0, 0, 0, 0,
-                            0, 0,0, 0, restTemplate);
+                            0,  triangularExploratorioMin, triangularExploratorioPer,  triangularExploratorioTer,
+                            0, 0, 0, 0,
+                            0, 0, 0,
+                            0,0,
+                            0, restTemplate);
                     Object resultado = simulacionMicros.ejecutarSimulacion();
 
                 long endEvaluacionEconomica = System.nanoTime();
                 System.out.println("Tiempo para cálculos de EvaluacionEconomica FRACASO: " + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
 
-
-
-
-
-
                 resultados.add(resultado);
-
-
-
-
-
-
-
-
-
-
             }
         }
 
@@ -505,7 +451,7 @@ public class MonteCarloSimulation {
 
 
         // Guardar resultados en el archivo Excel
-        try (FileOutputStream fileOut = new FileOutputStream("SimulacionMonteCarlo.xlsx")) {
+        try (FileOutputStream fileOut = new FileOutputStream("SimulacionMonteCarlo_" + idOportunidadObjetivo + ".xlsx")) {
             workbook.write(fileOut);
         } catch (IOException e) {
             e.printStackTrace();
