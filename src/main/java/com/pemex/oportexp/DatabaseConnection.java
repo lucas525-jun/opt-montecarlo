@@ -2,6 +2,8 @@ package com.pemex.oportexp;
 
 import com.pemex.oportexp.Models.InversionOportunidad;
 import com.pemex.oportexp.Models.Oportunidad;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -11,19 +13,33 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-
 public class DatabaseConnection {
+    private static HikariDataSource dataSource;
 
-    private static final String URL = "jdbc:postgresql://64.235.35.166:5433/desarrollo";
-    private static final String USER = "dba";
-    private static final String PASSWORD = "dba";
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:postgresql://64.235.35.166:5433/desarrollo");
+        config.setUsername("dba");
+        config.setPassword("dba");
+        config.setMaximumPoolSize(20); // Max connections
+        config.setMinimumIdle(5); // Minimum idle connections
+        config.setIdleTimeout(30000); // 30 seconds idle timeout
+        config.setMaxLifetime(1800000); // Max lifetime (30 minutes)
+        config.setConnectionTimeout(20000); // 20-second connection timeout
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+
+        dataSource = new HikariDataSource(config);
+    }
 
     public static Connection connect() {
-        Connection conn = null;
+        Connection conn = null; // Declare the connection
         try {
-            conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            conn = dataSource.getConnection();
         } catch (SQLException e) {
-            System.err.println("Error al conectarse a la base de datos: " + e.getMessage());
+            System.err.println("Error al conectarse a la base de datos: " +
+                    e.getMessage());
         }
         return conn;
     }
@@ -39,7 +55,6 @@ public class DatabaseConnection {
         double fcGas = 0;
         double fcCondensado = 0;
 
-
         String tipoValorMIN = null, tipoValorMP = null, tipoValorMAX = null;
         double gastoMIN = 0, gastoMP = 0, gastoMAX = 0;
 
@@ -47,57 +62,48 @@ public class DatabaseConnection {
 
         if (connection != null) {
 
-
             String idVersionQuery = """
-                    
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
-                    
+
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+
                     """;
 
-
-
-
-
-
             String oportunidadObjetivoQuery = """
-                SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo
-                FROM catalogo.claveobjetivovw\s
-                WHERE idversion = ? AND idoportunidadobjetivo = ?
-        """;
+                            SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo
+                            FROM catalogo.claveobjetivovw\s
+                            WHERE idversion = ? AND idoportunidadobjetivo = ?
+                    """;
 
             String VolumetriaQuery = """
-        SELECT idoportunidadobjetivo, pce, area, percentil 
-        FROM catalogo.volumetriaoportunidadvw 
-        WHERE idversion = ? AND idoportunidadobjetivo = ? AND percentil IN (10, 90)
-        """;
+                    SELECT idoportunidadobjetivo, pce, area, percentil
+                    FROM catalogo.volumetriaoportunidadvw
+                    WHERE idversion = ? AND idoportunidadobjetivo = ? AND percentil IN (10, 90)
+                    """;
 
             String GastoInicialQuery = """
-        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo           
-        FROM catalogo.gastoinicialoportunidadvw 
-        WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
-        """;
-
+                    SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo
+                    FROM catalogo.gastoinicialoportunidadvw
+                    WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String DeclinacionQuery = """
-        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, primdeclinacionoportunidad, idversion
-        FROM catalogo.declinacionoportunidadvw
-        WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
-        """;
-
+                    SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, primdeclinacionoportunidad, idversion
+                    FROM catalogo.declinacionoportunidadvw
+                    WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String fcQuery = """
-                SELECT mediaaceite/mediapce AS fc_aceite, mediagas/mediapce AS fc_gas, mediacondensado/mediapce AS fc_condensado
-                FROM catalogo.mediavolumetriaoportunidadtbl
-                WHERE idoportunidadobjetivo = ? AND idversion = ?
-                """;
-
+                    SELECT mediaaceite/mediapce AS fc_aceite, mediagas/mediapce AS fc_gas, mediacondensado/mediapce AS fc_condensado
+                    FROM catalogo.mediavolumetriaoportunidadtbl
+                    WHERE idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String queryExploratorio = """
-        SELECT * 
-        FROM inversion.exploratoriooportunidadvw 
-        WHERE idversion = ? 
-        AND idoportunidadobjetivo = ?
-        """;
+                    SELECT *
+                    FROM inversion.exploratoriooportunidadvw
+                    WHERE idversion = ?
+                    AND idoportunidadobjetivo = ?
+                    """;
 
             String queryDesarrollo = """
                     SELECT * FROM
@@ -106,36 +112,32 @@ public class DatabaseConnection {
                     AND idoportunidadobjetivo= ?
                     """;
 
-
             String queryInversion = """
-                    
+
                     SELECT * FROM inversion.otrosdatostbl WHERE idversion= ? AND idoportunidadobjetivo= ?
-                    
-                    
+
+
                     """;
-
-
 
             Oportunidad oportunidadObj = null;
             int idhidrocarburo = 0;
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
-                 PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
-                 PreparedStatement statement2 = connection.prepareStatement(VolumetriaQuery);
-                 PreparedStatement statement3 = connection.prepareStatement(GastoInicialQuery);
-                 PreparedStatement statement4 = connection.prepareStatement(DeclinacionQuery);
-                 PreparedStatement statement5 = connection.prepareStatement(fcQuery);
-                 PreparedStatement statement6 = connection.prepareStatement(queryExploratorio);
-                 PreparedStatement statement7 = connection.prepareStatement(queryDesarrollo);
-                 PreparedStatement statement8 = connection.prepareStatement(queryInversion);
-
+                    PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
+                    PreparedStatement statement2 = connection.prepareStatement(VolumetriaQuery);
+                    PreparedStatement statement3 = connection.prepareStatement(GastoInicialQuery);
+                    PreparedStatement statement4 = connection.prepareStatement(DeclinacionQuery);
+                    PreparedStatement statement5 = connection.prepareStatement(fcQuery);
+                    PreparedStatement statement6 = connection.prepareStatement(queryExploratorio);
+                    PreparedStatement statement7 = connection.prepareStatement(queryDesarrollo);
+                    PreparedStatement statement8 = connection.prepareStatement(queryInversion);
 
             ) {
 
                 preparedStatement.setString(1, version);
 
                 ResultSet preparedStatementQuery = preparedStatement.executeQuery();
-                int actualIdVersion = 0;  // Valor por defecto
+                int actualIdVersion = 0; // Valor por defecto
                 if (preparedStatementQuery.next()) {
                     actualIdVersion = preparedStatementQuery.getInt("idversion");
                     System.out.println("----------------");
@@ -146,10 +148,6 @@ public class DatabaseConnection {
                     System.err.println("No se encontró idVersion para la versión 'VersionMontecarlos1'.");
                     return null;
                 }
-
-
-
-
 
                 statement1.setInt(1, actualIdVersion);
                 statement1.setInt(2, idOportunidadObjetivo);
@@ -183,8 +181,6 @@ public class DatabaseConnection {
                         }
                     }
 
-
-
                     // GastoInicial Query
                     statement3.setInt(1, idOportunidadObjetivo);
                     statement3.setInt(2, actualIdVersion);
@@ -195,7 +191,6 @@ public class DatabaseConnection {
                         String tipoValor = resultSet3.getString("tipovalor");
                         double gasto = resultSet3.getDouble("gasto");
                         idhidrocarburo = resultSet1.getInt("idhidrocarburo");
-
 
                         switch (tipoValor) {
                             case "MIN":
@@ -221,7 +216,6 @@ public class DatabaseConnection {
                     while (resultSet4.next()) {
                         String tipoValor = resultSet4.getString("tipovalor");
                         double primDeclinacion = resultSet4.getDouble("primdeclinacionoportunidad");
-
 
                         switch (tipoValor) {
                             case "MIN":
@@ -282,10 +276,6 @@ public class DatabaseConnection {
                         }
                     }
 
-
-
-
-
                     statement7.setInt(1, actualIdVersion);
                     statement7.setInt(2, idOportunidadObjetivo);
 
@@ -321,7 +311,7 @@ public class DatabaseConnection {
                         }
                     }
 
-// Ejecutando la consulta
+                    // Ejecutando la consulta
                     // Declaración de las variables
                     // Declaración de las variables
                     int idtipovalor = 0;
@@ -338,7 +328,7 @@ public class DatabaseConnection {
                     double buquetanquecompra = 0.0;
                     double buquetanquerenta = 0.0;
 
-// Variables para valores mínimos
+                    // Variables para valores mínimos
                     double plataformadesarrolloMin = 0.0;
                     double lineadedescargaMin = 0.0;
                     double estacioncompresionMin = 0.0;
@@ -352,7 +342,7 @@ public class DatabaseConnection {
                     double buquetanquecompraMin = 0.0;
                     double buquetanquerentaMin = 0.0;
 
-// Variables para valores promedio (MP)
+                    // Variables para valores promedio (MP)
                     double plataformadesarrolloMp = 0.0;
                     double lineadedescargaMp = 0.0;
                     double estacioncompresionMp = 0.0;
@@ -366,7 +356,7 @@ public class DatabaseConnection {
                     double buquetanquecompraMp = 0.0;
                     double buquetanquerentaMp = 0.0;
 
-// Variables para valores máximos
+                    // Variables para valores máximos
                     double plataformadesarrolloMax = 0.0;
                     double lineadedescargaMax = 0.0;
                     double estacioncompresionMax = 0.0;
@@ -380,7 +370,7 @@ public class DatabaseConnection {
                     double buquetanquecompraMax = 0.0;
                     double buquetanquerentaMax = 0.0;
 
-// Asumiendo que la consulta ya fue configurada y ejecutada
+                    // Asumiendo que la consulta ya fue configurada y ejecutada
                     statement8.setInt(1, actualIdVersion);
                     statement8.setInt(2, idOportunidadObjetivo);
 
@@ -451,20 +441,21 @@ public class DatabaseConnection {
                         }
                     }
 
-
-
-                    InversionOportunidad InversionOportunidad = new InversionOportunidad(plataformadesarrolloMin, lineadedescargaMin, estacioncompresionMin,
-                            ductoMin, bateriaMin, arbolessubmarinosMin, manifoldsMin, risersMin, sistemasdecontrolMin, cubiertadeprocesMin, buquetanquecompraMin, buquetanquerentaMin,
+                    InversionOportunidad InversionOportunidad = new InversionOportunidad(plataformadesarrolloMin,
+                            lineadedescargaMin, estacioncompresionMin,
+                            ductoMin, bateriaMin, arbolessubmarinosMin, manifoldsMin, risersMin, sistemasdecontrolMin,
+                            cubiertadeprocesMin, buquetanquecompraMin, buquetanquerentaMin,
                             plataformadesarrolloMp, lineadedescargaMp, estacioncompresionMp, ductoMp, bateriaMp,
-                            arbolessubmarinosMp,manifoldsMp,risersMp,sistemasdecontrolMp,cubiertadeprocesMp,buquetanquecompraMp,buquetanquerentaMp,
+                            arbolessubmarinosMp, manifoldsMp, risersMp, sistemasdecontrolMp, cubiertadeprocesMp,
+                            buquetanquecompraMp, buquetanquerentaMp,
                             plataformadesarrolloMax, lineadedescargaMax, estacioncompresionMax, ductoMax, bateriaMax,
-                            arbolessubmarinosMax, manifoldsMax, risersMax, sistemasdecontrolMax, cubiertadeprocesMax, buquetanquecompraMax, buquetanquerentaMax
+                            arbolessubmarinosMax, manifoldsMax, risersMax, sistemasdecontrolMax, cubiertadeprocesMax,
+                            buquetanquecompraMax, buquetanquerentaMax
 
-                            );
-
+                    );
 
                     oportunidadObj = new Oportunidad(
-                            actualIdVersion,idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
+                            actualIdVersion, idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
                             hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
                             primDeclinacionMIN, primDeclinacionMP, primDeclinacionMAX, fcAceite, fcGas, fcCondensado,
                             infraestructuraMin, infraestructuraMP, infraestructuraMax,
@@ -472,12 +463,7 @@ public class DatabaseConnection {
                             terminacionMin, terminacionMP, terminacionMax,
                             infraestructuraMinDES, infraestructuraMPDES, infraestructuraMaxDES,
                             perforacionMinDES, perforacionMPDES, perforacionMaxDES,
-                            terminacionMinDES, terminacionMPDES, terminacionMaxDES, InversionOportunidad
-                    );
-
-
-
-
+                            terminacionMinDES, terminacionMPDES, terminacionMaxDES, InversionOportunidad);
 
                     return oportunidadObj;
 
@@ -500,18 +486,19 @@ public class DatabaseConnection {
         return null;
     }
 
-    public static Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota, double declinada, double pce, double area) {
+    public static Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota,
+            double declinada, double pce, double area) {
         Map<Integer, Double> resultMap = new HashMap<>();
         String productionQuery = "SELECT aanio, ctotalanual FROM calculo.spp_produccionanual(?, ?, ?, ?, ?, ?)";
         String idVersionQuery = """
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?      
-                    """;
+                SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+                """;
         try (Connection connection = connect();
-             PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
-             PreparedStatement statement = connection.prepareStatement(productionQuery)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
+                PreparedStatement statement = connection.prepareStatement(productionQuery)) {
 
             ResultSet preparedStatementQuery = preparedStatement.executeQuery();
-            int actualIdVersion = idVersion;  // Valor por defecto
+            int actualIdVersion = idVersion; // Valor por defecto
             if (preparedStatementQuery.next()) {
                 actualIdVersion = preparedStatementQuery.getInt("idversion");
             } else {
@@ -531,11 +518,8 @@ public class DatabaseConnection {
                     int anio = resultSet.getInt("aanio");
                     double ctotalanual = resultSet.getDouble("ctotalanual");
 
-
-
                     resultMap.put(anio, ctotalanual); // Guardamos el año y la producción anual
                 }
-
 
             }
         } catch (SQLException e) {
@@ -545,10 +529,4 @@ public class DatabaseConnection {
         return resultMap; // Devolvemos el mapa con los resultados
     }
 
-
-
-
-    }
-
-
-
+}
