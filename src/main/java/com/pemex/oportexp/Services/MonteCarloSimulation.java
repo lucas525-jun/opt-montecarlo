@@ -68,14 +68,13 @@ public class MonteCarloSimulation {
 
         // Iterar simulaciones
         int cores = Runtime.getRuntime().availableProcessors();
-        // ForkJoinPool customThreadPool = new ForkJoinPool(Math.min(12, cores));
         ForkJoinPool customThreadPool = new ForkJoinPool(24);
 
         long totalStartTime = System.nanoTime();
-        List<Map<Integer, Object>> excelResult = new ArrayList<>(3000);
+        List<Map<Integer, Object>> excelResult = new ArrayList<>(500);
 
         try {
-            customThreadPool.submit(() -> IntStream.range(0, 3000).parallel().forEach(i -> {
+            customThreadPool.submit(() -> IntStream.range(0, 500).parallel().forEach(i -> {
                 try {
                     Map<Integer, Object> excelRowData = new HashMap<>();
                     ResultadoSimulacion resultadoSimulacion = new ResultadoSimulacion();
@@ -426,6 +425,7 @@ public class MonteCarloSimulation {
                                 + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
 
                     }
+
                     excelResult.add(excelRowData);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -447,9 +447,6 @@ public class MonteCarloSimulation {
 
         System.out.println("Éxitos: " + exitos);
         System.out.println("Fracasos: " + fracasos);
-
-        // System.out.println("Éxitos: " + exitos.get());
-        // System.out.println("Fracasos: " + fracasos.get());
 
         excelResult.forEach(row -> writeResultsToExcel(sheet, row));
         saveJsonFile(resultados, "resultados.json");
@@ -505,8 +502,9 @@ public class MonteCarloSimulation {
     private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
         NormalDistribution normalStandard = new NormalDistribution(0, 1);
         double z90 = normalStandard.inverseCumulativeProbability(0.9);
-        double mediaLog = (Math.log(percentil10) + Math.log(percentil90)) / 2;
-        double desviacionLog = (Math.log(percentil10) - mediaLog) / z90;
+        double logPercentil10 = Math.log(percentil10);
+        double mediaLog = (logPercentil10 + Math.log(percentil90)) / 2;
+        double desviacionLog = (logPercentil10 - mediaLog) / z90;
 
         NormalDistribution normal = new NormalDistribution(mediaLog, desviacionLog);
 
