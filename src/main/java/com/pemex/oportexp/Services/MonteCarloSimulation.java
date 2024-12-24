@@ -71,10 +71,10 @@ public class MonteCarloSimulation {
         ForkJoinPool customThreadPool = new ForkJoinPool(Math.min(12, cores));
 
         long totalStartTime = System.nanoTime();
-        List<Map<Integer, Object>> excelResult = new ArrayList<>(1000);
+        List<Map<Integer, Object>> excelResult = new ArrayList<>(3000);
 
         try {
-            customThreadPool.submit(() -> IntStream.range(0, 1000).parallel().forEach(i -> {
+            customThreadPool.submit(() -> IntStream.range(0, 3000).parallel().forEach(i -> {
                 try {
                     Map<Integer, Object> excelRowData = new HashMap<>();
                     ResultadoSimulacion resultadoSimulacion = new ResultadoSimulacion();
@@ -454,7 +454,7 @@ public class MonteCarloSimulation {
         saveJsonFile(resultados, "resultados.json");
         long totalEndTime = System.nanoTime();
         System.out.println("total execute time: "
-                + (totalEndTime - totalStartTime) / 1_000_000 / 1000 + " seconds");
+                + (totalEndTime - totalStartTime) / 1000000 / 60000 + " min");
 
         try (FileOutputStream fos = new FileOutputStream("SimulacionMonteCarlo_" + idOportunidadObjetivo + ".xlsx")) {
             workbook.write(fos);
@@ -585,33 +585,9 @@ public class MonteCarloSimulation {
 
         // Si no se encuentra, crear una nueva columna
         int newColumnIndex = headerRow.getPhysicalNumberOfCells(); // Usa las celdas físicas ocupadas
-        Cell newCell = headerRow.put(newColumnIndex);
+        Cell newCell = headerRow.createCell(newColumnIndex);
         newCell.setCellValue(year);
         return newColumnIndex;
-    }
-
-    private void OrdenaEncabezado(Row headerRow) {
-        if (headerRow == null) {
-            System.out.println("La fila del encabezado no existe.");
-            return;
-        }
-        // Recopilar años y sus índices originales desde la columna U (índice 21)
-        List<Map.Entry<Integer, Integer>> yearIndexPairs = new ArrayList<>();
-        for (int i = 20; i < headerRow.getLastCellNum(); i++) {
-            Cell cell = headerRow.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
-                yearIndexPairs.add(new AbstractMap.SimpleEntry<>((int) cell.getNumericCellValue(), i));
-            }
-        }
-
-        // Ordenar los pares por el valor del año
-        yearIndexPairs.sort(Comparator.comparingInt(Map.Entry::getKey));
-
-        // Reorganizar las celdas de encabezado en el orden correcto
-        for (int i = 0; i < yearIndexPairs.size(); i++) {
-            int year = yearIndexPairs.get(i).getKey();
-            headerRow.getCell(20 + i, year); // Reasignar los años ordenados desde la columna K
-        }
     }
 
 }
