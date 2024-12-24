@@ -68,7 +68,8 @@ public class MonteCarloSimulation {
 
         // Iterar simulaciones
         int cores = Runtime.getRuntime().availableProcessors();
-        ForkJoinPool customThreadPool = new ForkJoinPool(Math.min(12, cores));
+        // ForkJoinPool customThreadPool = new ForkJoinPool(Math.min(12, cores));
+        ForkJoinPool customThreadPool = new ForkJoinPool(24);
 
         long totalStartTime = System.nanoTime();
         List<Map<Integer, Object>> excelResult = new ArrayList<>(3000);
@@ -447,14 +448,14 @@ public class MonteCarloSimulation {
         System.out.println("Éxitos: " + exitos);
         System.out.println("Fracasos: " + fracasos);
 
-        System.out.println("Éxitos: " + exitos.get());
-        System.out.println("Fracasos: " + fracasos.get());
+        // System.out.println("Éxitos: " + exitos.get());
+        // System.out.println("Fracasos: " + fracasos.get());
 
         excelResult.forEach(row -> writeResultsToExcel(sheet, row));
         saveJsonFile(resultados, "resultados.json");
         long totalEndTime = System.nanoTime();
-        System.out.println("total execute time: "
-                + (totalEndTime - totalStartTime) / 1000000 / 60000 + " min");
+        System.out.println("a_time: "
+                + (totalEndTime - totalStartTime) / 1000000 / 1000 + " s");
 
         try (FileOutputStream fos = new FileOutputStream("SimulacionMonteCarlo_" + idOportunidadObjetivo + ".xlsx")) {
             workbook.write(fos);
