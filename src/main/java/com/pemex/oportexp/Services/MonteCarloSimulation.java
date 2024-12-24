@@ -64,7 +64,8 @@ public class MonteCarloSimulation {
         // Crear libro y hoja en Excel
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Simulación Monte Carlo");
-        createExcelHeader(sheet);
+
+        Row headerRow = createExcelHeader(sheet);
 
         // Iterar simulaciones
         int cores = Runtime.getRuntime().availableProcessors();
@@ -348,7 +349,24 @@ public class MonteCarloSimulation {
                         Map<Integer, Double> produccionAnualMap = databaseConnection.executeProductionQuery(42, 2643,
                                 gastoTriangular, declinacion, recurso, area);
 
-                        produccionAnualMap.forEach((anio, ctoAnual) -> excelRowData.put(anio, ctoAnual));
+                        // produccionAnualMap.forEach((anio, ctoAnual) -> excelRowData.put(anio,
+                        // ctoAnual));
+                        // produccionAnualMap.forEach((anio, ctoAnual) -> {
+                        // int columnIndex = EncuentraOCreaColumna(headerRow, anio);
+                        // resultadoSimulacion.getCtoAnualList().add(new CtoAnualResultado(anio,
+                        // ctoAnual));
+                        // excelRowData.put(columnIndex, ctoAnual);
+                        // });
+
+                        for (Map.Entry<Integer, Double> entry : produccionAnualMap.entrySet()) {
+                            int anio = entry.getKey();
+                            double ctoAnual = entry.getValue();
+                            int columnIndex = EncuentraOCreaColumna(headerRow, anio);
+
+                            CtoAnualResultado CtoAnualRes = new CtoAnualResultado(anio, ctoAnual);
+                            resultadoSimulacion.getCtoAnualList().add(CtoAnualRes);
+                            excelRowData.put(columnIndex, ctoAnual);
+                        }
 
                         long endProduction = System.nanoTime();
                         System.out.println("Tiempo para cálculos de ProductionQuery: "
@@ -467,15 +485,23 @@ public class MonteCarloSimulation {
         return random.nextDouble() <= oportunidad.getPg();
     }
 
-    private void createExcelHeader(Sheet sheet) {
+    private Row createExcelHeader(Sheet sheet) {
         Row headerRow = sheet.createRow(0);
-        String[] headers = { "Iteración", "Resultado", "Aleatorio PCE", "PCE", "Aleatorio Gasto", "Gasto Inicial",
-                "Aleatorio Declinación", "Declinación" };
+        String[] headers = {
+                "Iteración", "Resultado", "Aleatorio PCE", "PCE",
+                "Aleatorio Gasto", "Gasto Inicial (mbpce)",
+                "Aleatorio Declinación", "Declinación",
+                "Aleatorio Área", "Área", "E.I.", "E.P", "E.T", "D.I", "D.P", "D.T", "Bateria", "Plataforma Desarrollo",
+                "Linea Descarga", "E.comprension ", "ducto", "Arboles submarinos", "manifols", "risers",
+                "Sistemas de control", "Cubierta Proces", "Buquetaquecompra", "buquetaQuerenta" // Añadido aquí
+        };
+
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             sheet.setColumnWidth(i, 5000);
         }
+        return headerRow;
     }
 
     private void writeResultsToExcel(Sheet sheet, Map<Integer, Object> rowData) {
