@@ -21,11 +21,11 @@ public class DatabaseConnection {
         config.setJdbcUrl("jdbc:postgresql://64.235.35.166:5433/desarrollo");
         config.setUsername("dba");
         config.setPassword("dba");
-        config.setMaximumPoolSize(20); // Max connections
-        config.setMinimumIdle(5); // Minimum idle connections
+        config.setMaximumPoolSize(40); // Max connections
+        config.setMinimumIdle(10); // Minimum idle connections
         config.setIdleTimeout(30000); // 30 seconds idle timeout
         config.setMaxLifetime(1800000); // Max lifetime (30 minutes)
-        config.setConnectionTimeout(20000); // 20-second connection timeout
+        config.setConnectionTimeout(30000); // 20-second connection timeout
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
