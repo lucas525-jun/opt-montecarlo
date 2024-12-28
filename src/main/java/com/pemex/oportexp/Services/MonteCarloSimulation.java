@@ -21,6 +21,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class MonteCarloSimulation {
@@ -67,15 +68,15 @@ public class MonteCarloSimulation {
 
         Row headerRow = createExcelHeader(sheet);
 
-        // Iterar simulaciones
-        int cores = Runtime.getRuntime().availableProcessors();
-        ForkJoinPool customThreadPool = new ForkJoinPool(48);
+        // int cores = Runtime.getRuntime().availableProcessors();
+
+        ForkJoinPool customThreadPool = new ForkJoinPool(24);
 
         long totalStartTime = System.nanoTime();
-        List<Map<Integer, Object>> excelResult = new ArrayList<>(3000);
+        List<Map<Integer, Object>> excelResult = new ArrayList<>(100);
 
         try {
-            customThreadPool.submit(() -> IntStream.range(0, 3000).parallel().forEach(i -> {
+            customThreadPool.submit(() -> IntStream.range(0, 100).parallel().forEach(i -> {
                 try {
                     Map<Integer, Object> excelRowData = new HashMap<>();
                     ResultadoSimulacion resultadoSimulacion = new ResultadoSimulacion();
@@ -394,7 +395,9 @@ public class MonteCarloSimulation {
 
                         System.out.println("Tiempo para cálculos de EvaluacionEconomica: "
                                 + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
-                        resultados.add(resultado);
+                        if (resultado != null) {
+                            resultados.add(resultado);
+                        }
                     } else {
                         fracasos.incrementAndGet();
                         excelRowData.put(1, "Fracaso");
@@ -437,7 +440,9 @@ public class MonteCarloSimulation {
                                 0, 0,
                                 0, restTemplate);
                         Object resultado = simulacionMicros.ejecutarSimulacion();
-
+                        if (resultado != null) {
+                            resultados.add(resultado);
+                        }
                         long endEvaluacionEconomica = System.nanoTime();
                         System.out.println("Tiempo para cálculos de EvaluacionEconomica FRACASO: "
                                 + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
@@ -467,7 +472,15 @@ public class MonteCarloSimulation {
         System.out.println("Fracasos: " + fracasos);
 
         excelResult.forEach(row -> writeResultsToExcel(sheet, row));
-        saveJsonFile(resultados, "resultados.json");
+
+        // remove null values
+
+        List<Object> filteredResultados = resultados.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        saveJsonFile(filteredResultados, "resultados.json");
+
         long totalEndTime = System.nanoTime();
         System.out.println("all_time: "
                 + (totalEndTime - totalStartTime) / 1000000 / 1000 + " s");
