@@ -3,18 +3,14 @@ package com.pemex.oportexp;
 import com.pemex.oportexp.Models.InversionOportunidad;
 import com.pemex.oportexp.Models.Oportunidad;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
 
 public class DatabaseConnection {
 
-    private static final String URL = "jdbc:postgresql://64.235.35.166:5433/desarrollo";
+    private static final String URL = "jdbc:postgresql://64.235.35.166:5433/desarrollov2";
     private static final String USER = "dba";
     private static final String PASSWORD = "dba";
 
@@ -60,7 +56,7 @@ public class DatabaseConnection {
 
 
             String oportunidadObjetivoQuery = """
-                SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo
+                SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo, regimenfiscal
                 FROM catalogo.claveobjetivovw\s
                 WHERE idversion = ? AND idoportunidadobjetivo = ?
         """;
@@ -402,6 +398,14 @@ public class DatabaseConnection {
                         buquetanquecompra = resultSet8.getDouble("buquetanquecompra");
                         buquetanquerenta = resultSet8.getDouble("buquetanquerenta");
 
+                        System.out.println("Risers c " + risers);
+                        System.out.println("Sistemas decontrol c " + sistemasdecontrol);
+                        System.out.println("Cubierta de proces c " + cubiertadeproces);
+                        System.out.println("Buquetanquecompra c " + buquetanquecompra);
+                        System.out.println("Buquetanquerenta c " + buquetanquerenta);
+                        System.out.println("Plataforma de proces c " + plataformadesarrollo);
+
+
                         // Asignar los valores a las variables correspondientes según el tipo de valor
                         switch (idtipovalor) {
                             case 1: // MIN
@@ -465,7 +469,7 @@ public class DatabaseConnection {
 
                     oportunidadObj = new Oportunidad(
                             actualIdVersion,idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
-                            hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
+                            hidrocarburo, tipoOportunidad, pg,gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
                             primDeclinacionMIN, primDeclinacionMP, primDeclinacionMAX, fcAceite, fcGas, fcCondensado,
                             infraestructuraMin, infraestructuraMP, infraestructuraMax,
                             perforacionMin, perforacionMP, perforacionMax,
@@ -545,8 +549,89 @@ public class DatabaseConnection {
         return resultMap; // Devolvemos el mapa con los resultados
     }
 
+    public double getMediaTruncada(String idVersion, int idOportunidadObjetivo) {
+        double resultado = 0.0;
+        int idVersionAct = 0;
+        String idVersionQuery = """
+                    
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
+                    
+                    """;
 
 
+        String query = "SELECT mediaarea " +
+                "FROM catalogo.mediavolumetriaoportunidadtbl " +
+                "WHERE idversion = ? AND idoportunidadobjetivo = ?";
+
+        try (Connection connection = connect()) {
+
+            PreparedStatement stmt = connection.prepareStatement(idVersionQuery);
+            stmt.setString(1, idVersion);
+
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                if(resultSet.next()) {
+                    idVersionAct = resultSet.getInt("idversion");
+                }
+            }
+
+
+            PreparedStatement stmt2 = connection.prepareStatement(query);
+            // Asignar los parámetros
+            stmt2.setInt(1, idVersionAct);
+            stmt2.setInt(2, idOportunidadObjetivo);
+
+            // Ejecutar la consulta
+            try (ResultSet rs = stmt2.executeQuery()) {
+                if (rs.next()) {
+                    resultado = rs.getDouble("mediaarea");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al ejecutar la consulta de media truncada: " + e.getMessage());
+        }
+
+        // Truncar el valor a 2 decimales (si es necesario)
+        return resultado;
+    }
+
+    public double getKilometraje(String idVersion, int idOportunidadObjetivo) {
+        double resultado = 0.0;
+        int idVersionAct = 0;
+        String idVersionQuery = """
+                    
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
+                    
+                    """;
+
+        String kmQuery = """
+                    SELECT idoportunidadobjetivo, idoportunidad,idversion, areakmasignacion
+                    	FROM catalogo.reloportunidadobjetivotbl  where idoportunidadobjetivo = ? and idversion = ?;
+                """;
+
+        try (Connection connection = connect()) {
+
+            PreparedStatement stmt = connection.prepareStatement(idVersionQuery);
+            stmt.setString(1, idVersion);
+
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                if (resultSet.next()) {
+                    idVersionAct = resultSet.getInt("idversion");
+                }
+            }
+            PreparedStatement stmt2 = connection.prepareStatement(kmQuery);
+            stmt2.setInt(1, idOportunidadObjetivo);
+            stmt2.setInt(2, idVersionAct);
+            try (ResultSet rs = stmt2.executeQuery()) {
+                if (rs.next()) {
+                    resultado = rs.getDouble("areakmasignacion");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error al ejecutar la consulta de kilometraje: " + e.getMessage());
+        }
+        return resultado;
+    }
 
     }
 
