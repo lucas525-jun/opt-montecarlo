@@ -56,11 +56,15 @@ public class MonteCarloSimulation {
         DatabaseConnection databaseConnection = new DatabaseConnection();
         Oportunidad oportunidad = databaseConnection.executeQuery(version, idOportunidadObjetivo); // Atributos y configuraciónSystem.out.println(aleatorioRecurso);
         setOportunidad(oportunidad);
+        double mediaTruncada = databaseConnection.getMediaTruncada(version, idOportunidadObjetivo);
+        double kilometraje = databaseConnection.getKilometraje(version, idOportunidadObjetivo);
+        System.out.println("Kilometraje = " + kilometraje);
 
         int exitos = 0;
         int fracasos = 0;
         int valores = 0;
         List<Object> resultados = new ArrayList<>();
+        HashMap<Double, Integer> limitesEconomicosRepetidos = new HashMap<>();
 
         // Crear libro y hoja en Excel
         Workbook workbook = new XSSFWorkbook();
@@ -83,6 +87,8 @@ public class MonteCarloSimulation {
                 IndexedColors.LIGHT_TURQUOISE, IndexedColors.BROWN, IndexedColors.GOLD
         };
 
+        int cantidadIteraciones = 10;
+
         for (int i = 0; i < headers.length; i++) {
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(colors[i % colors.length].getIndex());
@@ -101,7 +107,7 @@ public class MonteCarloSimulation {
         }
 
         // Iterar simulaciones
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < cantidadIteraciones; i++) {
             Row row = sheet.createRow(i + 1);
             row.createCell(0).setCellValue(i + 1); // Iteración número
             valores++;
@@ -122,6 +128,9 @@ public class MonteCarloSimulation {
                 ResultadoSimulacion.setPce(recurso);
 
                 System.out.println(aleatorioRecurso);
+
+                double limiteEconomico  = calcularLimiteEconomico(recurso) / 12;
+                limitesEconomicosRepetidos.merge(limiteEconomico, 1,Integer::sum);
 
                 long endRecursoProspectivo = System.nanoTime(); // Tiempo final para PCE
                 System.out.println("Tiempo para cálculos de PCE: " + (endRecursoProspectivo - startRecursoProspectivo) / 1_000_000 + " ms");
@@ -385,18 +394,13 @@ public class MonteCarloSimulation {
                 System.out.println("Tiempo para cálculos de ProductionQuery: " + (endProduction - startProduction) / 1_000_000 + " ms");
 
 
-
-
-
                 RestTemplate restTemplate = new RestTemplate();
 
                 long startEvaluacionEconomica = System.nanoTime();
 
                 SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),gastoTriangular, declinacion, recurso, area,
-
                         triangularInversionPlataforma, triangularInversionLineaDescarga, triangularInversionEstacionCompresion, triangularInversionDucto,
                         triangularInversionBat,
-
                         triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
                         triangularDESInfra, triangularDESPer, triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers,
                         triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
@@ -410,7 +414,7 @@ public class MonteCarloSimulation {
 
 
 
-
+                System.out.println("Éxito" + resultado);
                 resultados.add(resultado);
 
 
@@ -455,16 +459,16 @@ public class MonteCarloSimulation {
                 row.createCell(12).setCellValue(triangularExploratorioTer);
                 ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
 
+                limitesEconomicosRepetidos.merge(0.0, 1, Integer::sum);
 
-                    RestTemplate restTemplate = new RestTemplate();
+                RestTemplate restTemplate = new RestTemplate();
 
                     long startEvaluacionEconomica = System.nanoTime();
                     SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),0, 0,0 , 0,
 
                             0, 0, 0, 0,
                             0,
-
-                            1.2707182320442 , 80.691780546642,  13.65886,
+                            triangularExploratorioMin , triangularExploratorioPer,  triangularExploratorioTer,
                             0, 0, 0, 0, 0, 0,
                             0, 0,0, 0, restTemplate);
                     Object resultado = simulacionMicros.ejecutarSimulacion();
@@ -473,8 +477,7 @@ public class MonteCarloSimulation {
                 System.out.println("Tiempo para cálculos de EvaluacionEconomica FRACASO: " + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
 
 
-
-
+                System.out.println("Fracaso" + resultado);
 
 
                 resultados.add(resultado);
@@ -495,7 +498,22 @@ public class MonteCarloSimulation {
         System.out.println("Éxitos: " + exitos);
         System.out.println("Fracasos: " + fracasos);
 
+
+        double reporte804 = calcularReporte804(kilometraje, exitos, cantidadIteraciones);
+        List<Double> reporte805 = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada, cantidadIteraciones);
+
+
+        if (!resultados.isEmpty() && resultados.get(0) instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> primerElemento = (Map<String, Object>) resultados.get(0);
+            primerElemento.put("reporte804", reporte804);
+            primerElemento.put("reporte805", reporte805);
+        }
+
+
+
         ObjectMapper objectMapper = new ObjectMapper();
+
         try {
             objectMapper.writeValue(new File("resultados.json"), resultados);
             System.out.println("Resultados guardados en resultados.json");
@@ -540,14 +558,63 @@ public class MonteCarloSimulation {
         return Math.exp(logValue);
     }
 
+    private double calcularLimiteEconomico(double pce){
+        double resultado;
+        if(pce == 0){
+            resultado = 0.0;
+        }else{
+            resultado = Math.round((-0.00003 * Math.pow(pce, 2)) + (pce * 0.068) + 4.3824) * 12;
+        }
+
+        return resultado;
+    }
+
+    public List<Double> escaleraLimEconomicos(Map<Double, Integer> limitesEconomicosRepetidos, double mediaTruncada, int cantidadIteraciones) {
+        List<Double> reporte805 = new ArrayList<>();
+
+        System.out.println("\nResumen de Límites Económicos:");
+        limitesEconomicosRepetidos.forEach((limite, repeticiones) ->
+                System.out.println("Límite Económico: " + limite + " - Repeticiones: " + repeticiones));
+
+
+
+        // Filtrar las claves cuyo valor sea != 0 y encontrar la cantidad máxima de repeticiones
+        double maxLimiteEconomico = limitesEconomicosRepetidos.entrySet().stream()
+                .filter(entry -> entry.getKey() != 0) // Filtrar límites donde la clave sea != 0
+                .map(Map.Entry::getKey)              // Obtener las claves (límites económicos)
+                .max(Double::compare)               // Encontrar el máximo
+                .orElse(0.0);                          // Valor por defecto si no hay límites válidos                         // Manejo de caso vacío
+        // Calcular la última fila
+        for (int iteracion = 1; iteracion <= maxLimiteEconomico; iteracion++) {
+            double sumaIteracion = 0.0;
+
+            for (Map.Entry<Double, Integer> entry : limitesEconomicosRepetidos.entrySet()) {
+                Integer repeticiones = entry.getValue();
+                Double limite = entry.getKey();
+
+                // Sumar solo si la iteración está dentro del rango de repeticiones
+                if (iteracion <= limite && limite != 0) {
+                    sumaIteracion += (repeticiones * mediaTruncada);
+                }
+            }
+            sumaIteracion /= cantidadIteraciones;
+
+            // Agregar el resultado de la suma al final de la lista
+            reporte805.add(sumaIteracion);
+        }
+
+        return reporte805;
+    }
+
+    private double calcularReporte804(double kilometraje, int cantExitos, int cantidadIteraciones) {
+        return kilometraje - ((cantExitos * kilometraje) / cantidadIteraciones);
+    }
+
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {
 
         double gastoInicialMin = 0.0;
         double gastoInicialMP = 0.0;
         double gastoInicialMax = 0.0;
-
-
-
 
 
         if (oportunidad.getIdHidrocarburo() == 1 || oportunidad.getIdHidrocarburo() == 2 || oportunidad.getIdHidrocarburo() == 4 || oportunidad.getIdHidrocarburo() == 6 ) {
