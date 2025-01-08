@@ -3,7 +3,11 @@ package com.pemex.oportexp;
 import com.pemex.oportexp.Models.InversionOportunidad;
 import com.pemex.oportexp.Models.Oportunidad;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -397,14 +401,6 @@ public class DatabaseConnection {
                         cubiertadeproces = resultSet8.getDouble("cubiertadeproces");
                         buquetanquecompra = resultSet8.getDouble("buquetanquecompra");
                         buquetanquerenta = resultSet8.getDouble("buquetanquerenta");
-
-                        System.out.println("Risers c " + risers);
-                        System.out.println("Sistemas decontrol c " + sistemasdecontrol);
-                        System.out.println("Cubierta de proces c " + cubiertadeproces);
-                        System.out.println("Buquetanquecompra c " + buquetanquecompra);
-                        System.out.println("Buquetanquerenta c " + buquetanquerenta);
-                        System.out.println("Plataforma de proces c " + plataformadesarrollo);
-
 
                         // Asignar los valores a las variables correspondientes según el tipo de valor
                         switch (idtipovalor) {
