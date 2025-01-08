@@ -394,13 +394,18 @@ public class MonteCarloSimulation {
                 System.out.println("Tiempo para cálculos de ProductionQuery: " + (endProduction - startProduction) / 1_000_000 + " ms");
 
 
+
+
+
                 RestTemplate restTemplate = new RestTemplate();
 
                 long startEvaluacionEconomica = System.nanoTime();
 
                 SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),gastoTriangular, declinacion, recurso, area,
+
                         triangularInversionPlataforma, triangularInversionLineaDescarga, triangularInversionEstacionCompresion, triangularInversionDucto,
                         triangularInversionBat,
+
                         triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
                         triangularDESInfra, triangularDESPer, triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers,
                         triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
@@ -461,7 +466,7 @@ public class MonteCarloSimulation {
 
                 limitesEconomicosRepetidos.merge(0.0, 1, Integer::sum);
 
-                RestTemplate restTemplate = new RestTemplate();
+                    RestTemplate restTemplate = new RestTemplate();
 
                     long startEvaluacionEconomica = System.nanoTime();
                     SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,oportunidad.getActualIdVersion(),0, 0,0 , 0,
@@ -615,6 +620,9 @@ public class MonteCarloSimulation {
         double gastoInicialMin = 0.0;
         double gastoInicialMP = 0.0;
         double gastoInicialMax = 0.0;
+
+
+
 
 
         if (oportunidad.getIdHidrocarburo() == 1 || oportunidad.getIdHidrocarburo() == 2 || oportunidad.getIdHidrocarburo() == 4 || oportunidad.getIdHidrocarburo() == 6 ) {
