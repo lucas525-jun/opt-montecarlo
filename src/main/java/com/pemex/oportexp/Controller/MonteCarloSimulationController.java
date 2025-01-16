@@ -32,7 +32,7 @@ public class MonteCarloSimulationController {
             List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
 
             // URL del servidor Node.js
-            String nodeUrl = "http://host.docker.internal:3000/generate-excel";
+            String nodeUrl = "http://localhost:3000/generate-excel";
 
             // Configura los headers
             HttpHeaders headers = new HttpHeaders();
