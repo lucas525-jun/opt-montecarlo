@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class DatabaseConnection {
 
-    private static final String URL = "jdbc:postgresql://64.235.35.166:5433/desarrollo";
+    private static final String URL = "jdbc:postgresql://localhost:5432/proyecto";
     private static final String USER = "dba";
     private static final String PASSWORD = "dba";
 
