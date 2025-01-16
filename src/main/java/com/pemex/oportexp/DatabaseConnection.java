@@ -61,7 +61,7 @@ public class DatabaseConnection {
 
             String oportunidadObjetivoQuery = """
                 SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo
-                FROM catalogo.claveobjetivovw\s
+                FROM catalogo.claveobjetivovw
                 WHERE idversion = ? AND idoportunidadobjetivo = ?
         """;
 

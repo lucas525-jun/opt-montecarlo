@@ -101,7 +101,7 @@ public class MonteCarloSimulation {
         }
 
         // Iterar simulaciones
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 50; i++) {
             Row row = sheet.createRow(i + 1);
             row.createCell(0).setCellValue(i + 1); // Iteración número
             valores++;
