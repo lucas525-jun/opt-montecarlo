@@ -374,7 +374,7 @@ public class MonteCarloSimulation {
                 System.out.println("Tiempo para cálculos de Inversion: " + (endInversion - startInversion) / 1_000_000 + " ms");
 
 
-
+/*
                 long startProduction = System.nanoTime();
                 // Llamada a productionQuery y almacenamiento del resultado
                 Map<Integer, Double> produccionAnualMap = databaseConnection.executeProductionQuery(42, 2643, gastoTriangular, declinacion, recurso, area );
@@ -392,7 +392,7 @@ public class MonteCarloSimulation {
 
                 long endProduction = System.nanoTime();
                 System.out.println("Tiempo para cálculos de ProductionQuery: " + (endProduction - startProduction) / 1_000_000 + " ms");
-
+*/
 
 
 
