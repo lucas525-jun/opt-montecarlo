@@ -17,6 +17,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MonteCarloSimulation {
 
@@ -51,6 +53,7 @@ public class MonteCarloSimulation {
 
     private Random random = new Random();
 
+    private static final Lock writeLock = new ReentrantLock();
     public ResponseEntity<List<Object>> runSimulation() {
 
         DatabaseConnection databaseConnection = new DatabaseConnection();
@@ -87,7 +90,7 @@ public class MonteCarloSimulation {
                 IndexedColors.LIGHT_TURQUOISE, IndexedColors.BROWN, IndexedColors.GOLD
         };
 
-        int cantidadIteraciones = 10;
+        int cantidadIteraciones = 1000;
 
         for (int i = 0; i < headers.length; i++) {
             CellStyle headerStyle = workbook.createCellStyle();
@@ -516,14 +519,29 @@ public class MonteCarloSimulation {
         }
 
 
-
-        ObjectMapper objectMapper = new ObjectMapper();
-
+        writeLock.lock();
         try {
-            objectMapper.writeValue(new File("resultados.json"), resultados);
-            System.out.println("Resultados guardados en resultados.json");
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            File tempFile = new File("resultados_temp.json");
+            File resFile = new File("resultados.json");
+            objectMapper.writeValue(tempFile, resultados); // Se escribe el json en un archivo temporal
+
+            if (resFile.exists()) {
+                if (!resFile.delete()) {
+                    throw new IOException("No se pudo eliminar el archivo de destino.");
+                }
+            }
+
+            if(tempFile.renameTo(resFile)) {
+                System.out.println("Resultados guardados en resultados.json");
+            } else {
+                System.err.println("Error al renombrar el archivo temporal");
+            }
         } catch (IOException e) {
             e.printStackTrace();
+        }finally {
+            writeLock.unlock(); // Libero el bloqueo
         }
 
 
@@ -540,7 +558,7 @@ public class MonteCarloSimulation {
             }
         }
 
-        System.out.println("Resultados guardados en SimulacionMonteCarlo.xlsx");
+        System.out.println("Resultados guardados en SimulacionMonteCarlo"+idOportunidadObjetivo+".xlsx");
 
 
         return ResponseEntity.ok(resultados);
