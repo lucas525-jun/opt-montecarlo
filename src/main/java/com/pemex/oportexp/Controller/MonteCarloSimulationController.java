@@ -7,12 +7,12 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
-
-@CrossOrigin(origins = {"http://localhost:4200", "http://localhost:5173"})
-
+@CrossOrigin(origins = { "http://localhost:4200", "http://localhost:5173" })
 
 @RestController
 @RequestMapping("/api/simulation")
@@ -24,17 +24,17 @@ public class MonteCarloSimulationController {
     RestTemplate restTemplate;
 
     @GetMapping("/run")
-    public ResponseEntity<?> runSimulation(@RequestParam("Version") String version, @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
+    public ResponseEntity<?> runSimulation(@RequestParam("Version") String version,
+            @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
         MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo);
 
         try {
             // Ejecuta la simulación y obtiene los datos
             List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
+            // System.out.println("Resultados: " + resultados);
 
-            // URL del servidor Node.js
             String nodeUrl = "http://localhost:3000/generate-excel";
 
-            // Configura los headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -46,17 +46,17 @@ public class MonteCarloSimulationController {
                     nodeUrl,
                     HttpMethod.POST,
                     request,
-                    byte[].class
-            );
+                    byte[].class);
 
             // Verifica si la respuesta es válida
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 // Configura las cabeceras para la descarga
                 HttpHeaders fileHeaders = new HttpHeaders();
                 fileHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                String resFileName = "Resultados_" + idOportunidadObjetivo + ".xlsx";
                 fileHeaders.setContentDisposition(ContentDisposition
                         .attachment()
-                        .filename("Resultados.xlsx")
+                        .filename(resFileName)
                         .build());
 
                 return new ResponseEntity<>(response.getBody(), fileHeaders, HttpStatus.OK);
@@ -71,16 +71,17 @@ public class MonteCarloSimulationController {
     }
 
     @GetMapping("/runJson")
-    public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String version, @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
+    public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String version,
+            @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
 
         MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo);
 
         try {
             // Ejecuta la simulación y obtiene los datos
-            List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
+            List<Object> resultadosJson = monteCarloSimulation.runSimulation().getBody();
 
             // Devuelve los resultados directamente
-            return ResponseEntity.ok(resultados);
+            return ResponseEntity.ok(resultadosJson);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
