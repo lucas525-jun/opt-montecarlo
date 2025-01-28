@@ -17,8 +17,8 @@ public class SimulacionMicros {
     private double arbolesSubmarinos;
     private double manifolds;
     private double risers;
-    private  double sistemasDeControl;
-    private  double cubiertaDeProceso;
+    private double sistemasDeControl;
+    private double cubiertaDeProceso;
     private double buquetaqueCompra;
     private double buquetaqueRenta;
     private double gastoTriangular;
@@ -43,23 +43,22 @@ public class SimulacionMicros {
     private double ducto;
     private double bateria;
 
-
-
     @JsonIgnore
     private final RestTemplate restTemplate;
 
+    public SimulacionMicros(Integer idOportunidad, Integer version, double cuota, double declinada, double pce,
+            double area,
 
-    public SimulacionMicros(Integer idOportunidad, Integer version, double cuota, double declinada, double pce, double area,
+            double plataformaDesarrollo, double lineaDeDescarga, double estacionCompresion, double ducto,
+            double bateria,
 
-                            double plataformaDesarrollo, double lineaDeDescarga, double estacionCompresion, double ducto, double bateria,
-
-
-                            double triangularExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
-                            double triangularDESInfra, double triangularDESPer, double triangularDESTer,
-                            double triangularInversionArbolesSubmarinos, double triangularInversionManifolds, double triangularInversionRisers,
-                            double triangularInversionSistemasDeControl, double triangularInversionCubiertaDeProces,
-                            double triangularInversionBuqueTanqueCompra, double triangularInversionBuqueTanqueRenta,
-                            RestTemplate restTemplate) {
+            double triangularExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
+            double triangularDESInfra, double triangularDESPer, double triangularDESTer,
+            double triangularInversionArbolesSubmarinos, double triangularInversionManifolds,
+            double triangularInversionRisers,
+            double triangularInversionSistemasDeControl, double triangularInversionCubiertaDeProces,
+            double triangularInversionBuqueTanqueCompra, double triangularInversionBuqueTanqueRenta,
+            RestTemplate restTemplate) {
 
         this.idOportunidad = idOportunidad;
         this.version = version;
@@ -73,9 +72,6 @@ public class SimulacionMicros {
         this.estacionCompresion = estacionCompresion;
         this.ducto = ducto;
         this.bateria = bateria;
-
-
-
 
         this.gastoTriangular = gastoTriangular;
         this.declinacion = declinacion;
@@ -95,7 +91,6 @@ public class SimulacionMicros {
         this.triangularInversionBuqueTanqueRenta = triangularInversionBuqueTanqueRenta;
         this.restTemplate = restTemplate;
     }
-
 
     // Getters y Setters
     public Integer getIdOportunidad() {
@@ -154,12 +149,15 @@ public class SimulacionMicros {
         try {
 
             String url = String.format(
-                    "http://host.docker.internal:8082/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
-                    idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga, estacionCompresion,
-                    ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer, triangularDESInfra, triangularDESPer,
-                    triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers, triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,
-                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta
-            );
+                    "http://localhost:8082/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
+                    idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga,
+                    estacionCompresion,
+                    ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
+                    triangularDESInfra, triangularDESPer,
+                    triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds,
+                    triangularInversionRisers, triangularInversionSistemasDeControl,
+                    triangularInversionCubiertaDeProces,
+                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta);
 
             // Llamada HTTP GET sin un modelo específico
             Object response = restTemplate.getForObject(url, Object.class);
@@ -167,7 +165,7 @@ public class SimulacionMicros {
             return response;
         } catch (Exception e) {
             System.out.println("Error al ejecutar la simulación: " + e.getMessage());
-            return null;  // O maneja el error según sea necesario
+            return null; // O maneja el error según sea necesario
         }
     }
 

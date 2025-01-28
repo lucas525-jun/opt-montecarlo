@@ -76,8 +76,10 @@ public class MonteCarloSimulation {
         DatabaseConnection databaseConnection = new DatabaseConnection();
         Oportunidad oportunidad = databaseConnection.executeQuery(version, idOportunidadObjetivo);
         setOportunidad(oportunidad);
+        System.err.println("version : " + version);
+        System.err.println("idOportunidadObjetivo : " + idOportunidadObjetivo);
 
-        int cantidadIteraciones = 10;
+        int cantidadIteraciones = 3000;
 
         int indexAleatorioRecurso = 0;
         int indexAleatorioGasto = 1;
@@ -600,12 +602,7 @@ public class MonteCarloSimulation {
                 e.printStackTrace();
             }
         }
-        long endGenExcel = System.nanoTime();
-        // System.out.println("GenExcel time: " + (endGenExcel - startGenExcel) /
-        // 1_000_000 + " ms");
 
-        // System.out.println("Resultados guardados en SimulacionMonteCarlo" +
-        // idOportunidadObjetivo + ".xlsx");
         long endSimulacion = System
                 .nanoTime();
         System.out.println("Total time: " + (endSimulacion - startSimulacion) / 1_000_000 + " ms");
@@ -644,11 +641,6 @@ public class MonteCarloSimulation {
     public List<Double> escaleraLimEconomicos(Map<Double, Integer> limitesEconomicosRepetidos, double mediaTruncada,
             int cantidadIteraciones) {
         List<Double> reporte805 = new ArrayList<>();
-
-        // System.out.println("\nResumen de Límites Económicos:");
-        // limitesEconomicosRepetidos.forEach((limite, repeticiones) -> System.out
-        // .println("Límite Económico: " + limite + " - Repeticiones: " +
-        // repeticiones));
 
         // Filtrar las claves cuyo valor sea != 0 y encontrar la cantidad máxima de
         // repeticiones
