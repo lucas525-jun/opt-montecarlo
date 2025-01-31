@@ -9,7 +9,7 @@
     </parent>
     <groupId>com.pemex.oportexp</groupId>
     <artifactId>oportexp-montecarlo</artifactId>
-    <version>1.0.0.</version>
+    <version>1.0.0</version>
     <name>oportexp-montecarlo</name>
     <description>OportExp Montecarlo</description>
     <packaging>jar</packaging>
@@ -85,6 +85,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <jvmArguments>
+                        -Xmx2g -Xms1g
+                    </jvmArguments>
+                </configuration>
             </plugin>
         </plugins>
     </build>

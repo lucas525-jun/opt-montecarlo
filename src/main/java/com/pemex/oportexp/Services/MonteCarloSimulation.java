@@ -5,7 +5,6 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.pemex.oportexp.DatabaseConnection;
-import com.pemex.oportexp.Models.CtoAnualResultado;
 import com.pemex.oportexp.Models.Oportunidad;
 import com.pemex.oportexp.Models.ResultadoSimulacion;
 import org.springframework.http.ResponseEntity;
@@ -14,30 +13,18 @@ import org.springframework.web.client.RestTemplate;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class MonteCarloSimulation {
-
-    // private static final ForkJoinPool SHARED_POOL;
-    // private static final int MAX_CONCURRENT_SIMULATIONS = 2;
-    // private static final Semaphore SIMULATION_SEMAPHORE = new
-    // Semaphore(MAX_CONCURRENT_SIMULATIONS);
-    // static {
-    // int processors = Runtime.getRuntime().availableProcessors();
-    // SHARED_POOL = new ForkJoinPool(processors);
-    // }
 
     private final String version;
     private final int idOportunidadObjetivo;
@@ -47,8 +34,6 @@ public class MonteCarloSimulation {
     private int exitos = 0;
     private int fracasos = 0;
     private int valores = 0;
-
-    private final AtomicInteger microTimeCounter = new AtomicInteger(1);
 
     public void setOportunidad(Oportunidad oportunidad) {
         this.oportunidad = oportunidad;
@@ -61,23 +46,17 @@ public class MonteCarloSimulation {
 
     }
 
-    long startSimulacion = System.nanoTime();
-
     double triangularInversionBat, triangularInversionPlataforma, triangularInversionLineaDescarga;
     double triangularInversionEstacionCompresion, triangularInversionDucto, triangularInversionArbolesSubmarinos;
     double triangularInversionManifolds, triangularInversionRisers, triangularInversionSistemasDeControl;
     double triangularInversionCubiertaDeProces, triangularInversionBuqueTanqueCompra,
             triangularInversionBuqueTanqueRenta;
 
-    private static final Lock writeLock = new ReentrantLock();
-
     public ResponseEntity<List<Object>> runSimulation() {
 
         DatabaseConnection databaseConnection = new DatabaseConnection();
         Oportunidad oportunidad = databaseConnection.executeQuery(version, idOportunidadObjetivo);
         setOportunidad(oportunidad);
-        System.err.println("version : " + version);
-        System.err.println("idOportunidadObjetivo : " + idOportunidadObjetivo);
 
         int cantidadIteraciones = 3000;
 
@@ -109,7 +88,6 @@ public class MonteCarloSimulation {
 
         double mediaTruncada = databaseConnection.getMediaTruncada(version, idOportunidadObjetivo);
         double kilometraje = databaseConnection.getKilometraje(version, idOportunidadObjetivo);
-        // System.out.println("Kilometraje = " + kilometraje);
 
         List<Object> resultados = Collections.synchronizedList(new ArrayList<>());
         Map<Double, Integer> limitesEconomicosRepetidos = new ConcurrentHashMap<>();
@@ -177,7 +155,6 @@ public class MonteCarloSimulation {
 
         // ForkJoinPool customThreadPool = new ForkJoinPool(24);
         int optimalThreads = Runtime.getRuntime().availableProcessors() * 2;
-        System.err.println("Processor : " + optimalThreads);
 
         ForkJoinPool customThreadPool = new ForkJoinPool(optimalThreads);
 
@@ -199,8 +176,6 @@ public class MonteCarloSimulation {
                     exitos++;
                     excelRowData.put(1, "Éxito");
 
-                    long startRecursoProspectivo = System.nanoTime(); // Tiempo inicial de toda la iteración
-
                     // Valores aleatorios y cálculos para éxito
                     double aleatorioRecurso = 0.01
                             + (0.99 - 0.01) * randomNumbers.get(baseIndex + indexAleatorioRecurso);
@@ -211,16 +186,8 @@ public class MonteCarloSimulation {
                     excelRowData.put(3, recurso);
                     ResultadoSimulacion.setPce(recurso);
 
-                    // System.out.println(aleatorioRecurso);
-
                     double limiteEconomico = calcularLimiteEconomico(recurso) / 12;
                     limitesEconomicosRepetidos.merge(limiteEconomico, 1, Integer::sum);
-
-                    long endRecursoProspectivo = System.nanoTime(); // Tiempo final para PCE
-                    // System.out.println("Tiempo para cálculos de PCE: "
-                    // + (endRecursoProspectivo - startRecursoProspectivo) / 1_000_000 + " ms");
-
-                    long startCuota = System.nanoTime();
 
                     double aleatorioGasto = randomNumbers.get(baseIndex + indexAleatorioGasto);
 
@@ -228,12 +195,6 @@ public class MonteCarloSimulation {
                     excelRowData.put(4, aleatorioRecurso);
                     excelRowData.put(5, gastoTriangular);
                     ResultadoSimulacion.setGastoInicial(gastoTriangular);
-
-                    long endCuota = System.nanoTime();
-                    // System.out.println("Tiempo para cálculos de Cuota: " + (endCuota -
-                    // startCuota) / 1_000_000 + " ms");
-
-                    long startDeclinacion = System.nanoTime();
 
                     double aleatorioDeclinacion = randomNumbers.get(baseIndex + indexAleatorioDeclinacion);
 
@@ -246,13 +207,6 @@ public class MonteCarloSimulation {
 
                     ResultadoSimulacion.setDeclinacion(declinacion);
 
-                    long endDeclinacion = System.nanoTime();
-
-                    // System.out.println("Tiempo para cálculos de declinacion: "
-                    // + (endDeclinacion - startDeclinacion) / 1_000_000 + " ms");
-
-                    long startArea = System.nanoTime();
-
                     double aleatorioArea = randomNumbers.get(baseIndex + indexAleatorioArea);
 
                     double area = calcularRecursoProspectivo(aleatorioArea, oportunidad.getArea10(),
@@ -262,12 +216,6 @@ public class MonteCarloSimulation {
 
                     ResultadoSimulacion.setArea(area);
 
-                    long endArea = System.nanoTime();
-                    // System.out.println("Tiempo para cálculos de Area: " + (endArea - startArea) /
-                    // 1_000_000 + " ms");
-
-                    long startExploratorio = System.nanoTime();
-
                     excelRowData.put(10, triangularExploratorioMin);
                     ResultadoSimulacion.setExploratoriaInfra(triangularExploratorioMin);
 
@@ -276,12 +224,6 @@ public class MonteCarloSimulation {
 
                     excelRowData.put(12, triangularExploratorioTer);
                     ResultadoSimulacion.setExploratoriaTer(triangularExploratorioTer);
-
-                    long endExploratorio = System.nanoTime();
-                    // System.out.println("Tiempo para cálculos de Exploratorio: "
-                    // + (endExploratorio - startExploratorio) / 1_000_000 + " ms");
-
-                    long startDesarrollo = System.nanoTime();
 
                     double aleatorioDesInfra = randomNumbers.get(baseIndex + indexAleatorioDesInfra);
 
@@ -308,13 +250,6 @@ public class MonteCarloSimulation {
                             aleatorioDesTer);
                     excelRowData.put(15, triangularDESTer);
                     ResultadoSimulacion.setDesarrolloTer(triangularDESTer);
-
-                    long endDesarrollo = System.nanoTime();
-                    // System.out.println(
-                    // "Tiempo para cálculos de Desarrollo : " + (endDesarrollo - startDesarrollo) /
-                    // 1_000_000 + " ms");
-
-                    long startInversion = System.nanoTime();
 
                     if (oportunidad.getInversionOportunidad().getBateriaMin() != 0) {
                         double AleatorioInverision = randomNumbers.get(baseIndex + indexBateriaMin);
@@ -460,14 +395,7 @@ public class MonteCarloSimulation {
                         ResultadoSimulacion.setBuqueTanqueRenta(triangularInversionBuqueTanqueRenta);
                     }
 
-                    long endInversion = System.nanoTime();
-                    // System.out.println(
-                    // "Tiempo para cálculos de Inversion: " + (endInversion - startInversion) /
-                    // 1_000_000 + " ms");
-
                     RestTemplate restTemplate = new RestTemplate();
-
-                    long startEvaluacionEconomica = System.nanoTime();
 
                     SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,
                             oportunidad.getActualIdVersion(), gastoTriangular, declinacion, recurso, area,
@@ -485,7 +413,6 @@ public class MonteCarloSimulation {
 
                     Object resultado = simulacionMicros.ejecutarSimulacion();
 
-                    // System.out.println("Éxito" + resultado);
                     resultadosQueue.add(resultado);
 
                 } else {
@@ -510,7 +437,6 @@ public class MonteCarloSimulation {
 
                     RestTemplate restTemplate = new RestTemplate();
 
-                    long startEvaluacionEconomica = System.nanoTime();
                     SimulacionMicros simulacionMicros = new SimulacionMicros(idOportunidadObjetivo,
                             oportunidad.getActualIdVersion(), 0, 0, 0, 0,
 
@@ -520,12 +446,6 @@ public class MonteCarloSimulation {
                             0, 0, 0, 0, 0, 0,
                             0, 0, 0, 0, restTemplate);
                     Object resultado = simulacionMicros.ejecutarSimulacion();
-
-                    long endEvaluacionEconomica = System.nanoTime();
-                    // System.out.println("Tiempo para cálculos de EvaluacionEconomica FRACASO: "
-                    // + (endEvaluacionEconomica - startEvaluacionEconomica) / 1_000_000 + " ms");
-
-                    // System.out.println("Fracaso" + resultado);
 
                     resultadosQueue.add(resultado);
 
@@ -546,12 +466,6 @@ public class MonteCarloSimulation {
                 Thread.currentThread().interrupt();
             }
         }
-        long startGenExcel = System.nanoTime();
-        // System.out.println("Simulation time: " + (startGenExcel - startSimulacion) /
-        // 1_000_000 + " ms");
-
-        // System.out.println("Éxitos: " + exitos);
-        // System.out.println("Fracasos: " + fracasos);
 
         double reporte804 = calcularReporte804(kilometraje, exitos, cantidadIteraciones);
         List<Double> reporte805 = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada, cantidadIteraciones);
@@ -602,10 +516,6 @@ public class MonteCarloSimulation {
                 e.printStackTrace();
             }
         }
-
-        long endSimulacion = System
-                .nanoTime();
-        System.out.println("Total time: " + (endSimulacion - startSimulacion) / 1_000_000 + " ms");
 
         return ResponseEntity.ok(resultados);
 
