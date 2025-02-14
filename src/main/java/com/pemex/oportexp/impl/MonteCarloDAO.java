@@ -1,35 +1,37 @@
-package com.pemex.oportexp;
+package com.pemex.oportexp.impl;
 
 import com.pemex.oportexp.Models.InversionOportunidad;
 import com.pemex.oportexp.Models.Oportunidad;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
+@Component
+public class MonteCarloDAO {
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
-public class DatabaseConnection {
-
-    private static final String URL = "jdbc:postgresql://64.235.35.166:5433/desarrollov2";
-    private static final String USER = "dba";
-    private static final String PASSWORD = "dba";
-
-    public static Connection connect() {
-        Connection conn = null;
+    private Connection getConnection() {
         try {
-            conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            return Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
         } catch (SQLException e) {
-            System.err.println("Error al conectarse a la base de datos: " + e.getMessage());
+            System.err.println("Error al obtener la conexión a la base de datos: " + e.getMessage());
         }
-        return conn;
+
+        return null;
     }
 
-    public static Oportunidad executeQuery(String version, int idOportunidadObjetivo) {
-        Connection connection = connect();
+    public Oportunidad executeQuery(String version, int idOportunidadObjetivo) {
+
+        Connection connection = getConnection();
 
         double pce10 = 0;
         double area10 = 0;
@@ -500,13 +502,13 @@ public class DatabaseConnection {
         return null;
     }
 
-    public static Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota, double declinada, double pce, double area) {
+    public Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota, double declinada, double pce, double area) {
         Map<Integer, Double> resultMap = new HashMap<>();
         String productionQuery = "SELECT aanio, ctotalanual FROM calculo.spp_produccionanual(?, ?, ?, ?, ?, ?)";
         String idVersionQuery = """
                     SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?      
                     """;
-        try (Connection connection = connect();
+        try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
              PreparedStatement statement = connection.prepareStatement(productionQuery)) {
 
@@ -559,7 +561,7 @@ public class DatabaseConnection {
                 "FROM catalogo.mediavolumetriaoportunidadtbl " +
                 "WHERE idversion = ? AND idoportunidadobjetivo = ?";
 
-        try (Connection connection = connect()) {
+        try (Connection connection = getConnection()) {
 
             PreparedStatement stmt = connection.prepareStatement(idVersionQuery);
             stmt.setString(1, idVersion);
@@ -604,7 +606,7 @@ public class DatabaseConnection {
                     	FROM catalogo.reloportunidadobjetivotbl  where idoportunidadobjetivo = ? and idversion = ?;
                 """;
 
-        try (Connection connection = connect()) {
+        try (Connection connection = getConnection()) {
 
             PreparedStatement stmt = connection.prepareStatement(idVersionQuery);
             stmt.setString(1, idVersion);
@@ -629,7 +631,7 @@ public class DatabaseConnection {
         return resultado;
     }
 
-    }
+}
 
 
 

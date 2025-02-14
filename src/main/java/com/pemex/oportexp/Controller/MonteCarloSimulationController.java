@@ -1,15 +1,15 @@
 package com.pemex.oportexp.Controller;
 
 import com.pemex.oportexp.Services.ExcelService;
-import com.pemex.oportexp.Services.MonteCarloSimulation;
+import com.pemex.oportexp.Services.MonteCarloService;
+import com.pemex.oportexp.impl.MonteCarloSimulation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-
-@CrossOrigin(origins = { "http://localhost:4200", "http://localhost:5173" })
 
 @RestController
 @RequestMapping("/api/simulation")
@@ -18,12 +18,21 @@ public class MonteCarloSimulationController {
     private ExcelService excelService;
 
     @Autowired
+    private MonteCarloService monteCarloService;
+
+    @Autowired
     RestTemplate restTemplate;
+
+    @Value("${OPORTEXT_GENEXCEL_HOST:localhost}")
+    private String genExcelHost;
+
+    @Value("${OPORTEXT_GENEXCEL_POST:3000}")
+    private String genExcelPort;
 
     @GetMapping("/run")
     public ResponseEntity<?> runSimulation(@RequestParam("Version") String version,
             @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
-        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo);
+        MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo);
 
         try {
             // Ejecuta la simulación y obtiene los datos
@@ -32,7 +41,7 @@ public class MonteCarloSimulationController {
             // System.err.println("Data sent to generate-excel: {}" + resultados);
 
             // URL del servidor Node.js
-            String nodeUrl = "http://localhost:3000/generate-excel";
+            String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort + "/generate-excel";
 
             // Configura los headers
             HttpHeaders headers = new HttpHeaders();

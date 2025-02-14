@@ -1,10 +1,10 @@
-package com.pemex.oportexp.Services;
+package com.pemex.oportexp.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import com.pemex.oportexp.DatabaseConnection;
 import com.pemex.oportexp.Models.Oportunidad;
 import com.pemex.oportexp.Models.ResultadoSimulacion;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +14,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
@@ -25,7 +23,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class MonteCarloSimulation {
-
+    @Setter
+    private MonteCarloDAO monteCarloDAO;
+    private String economicEvaHost;
+    private String economicEvaPort;
     private final String version;
     private final int idOportunidadObjetivo;
     private Oportunidad oportunidad;
@@ -40,10 +41,13 @@ public class MonteCarloSimulation {
     }
 
     public MonteCarloSimulation(String version, int idOportunidadObjetivo) {
-
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
+    }
 
+    public void setEconomicEvaHostAndPort(String host, String port){
+        this.economicEvaHost = host;
+        this.economicEvaPort = port;
     }
 
     double triangularInversionBat, triangularInversionPlataforma, triangularInversionLineaDescarga;
@@ -53,9 +57,7 @@ public class MonteCarloSimulation {
             triangularInversionBuqueTanqueRenta;
 
     public ResponseEntity<List<Object>> runSimulation() {
-
-        DatabaseConnection databaseConnection = new DatabaseConnection();
-        Oportunidad oportunidad = databaseConnection.executeQuery(version, idOportunidadObjetivo);
+        Oportunidad oportunidad = monteCarloDAO.executeQuery(version, idOportunidadObjetivo);
         setOportunidad(oportunidad);
 
         int cantidadIteraciones = 3000;
@@ -86,8 +88,8 @@ public class MonteCarloSimulation {
                 .boxed()
                 .collect(Collectors.toList());
 
-        double mediaTruncada = databaseConnection.getMediaTruncada(version, idOportunidadObjetivo);
-        double kilometraje = databaseConnection.getKilometraje(version, idOportunidadObjetivo);
+        double mediaTruncada = monteCarloDAO.getMediaTruncada(version, idOportunidadObjetivo);
+        double kilometraje = monteCarloDAO.getKilometraje(version, idOportunidadObjetivo);
 
         List<Object> resultados = Collections.synchronizedList(new ArrayList<>());
         Map<Double, Integer> limitesEconomicosRepetidos = new ConcurrentHashMap<>();
@@ -411,6 +413,11 @@ public class MonteCarloSimulation {
                             triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,
                             triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
 
+
+                    // Set host and port for Economic Eva service
+                    simulacionMicros.setEconomicEvaHost(economicEvaHost);
+                    simulacionMicros.setEconomicEvaPort(economicEvaPort);
+
                     Object resultado = simulacionMicros.ejecutarSimulacion();
 
                     resultadosQueue.add(resultado);
@@ -445,6 +452,9 @@ public class MonteCarloSimulation {
                             triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
                             0, 0, 0, 0, 0, 0,
                             0, 0, 0, 0, restTemplate);
+
+                    simulacionMicros.setEconomicEvaHost(economicEvaHost);
+                    simulacionMicros.setEconomicEvaPort(economicEvaPort);
                     Object resultado = simulacionMicros.ejecutarSimulacion();
 
                     resultadosQueue.add(resultado);
