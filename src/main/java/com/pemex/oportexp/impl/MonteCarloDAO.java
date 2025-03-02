@@ -13,6 +13,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class MonteCarloDAO {
@@ -41,7 +43,6 @@ public class MonteCarloDAO {
         double fcGas = 0;
         double fcCondensado = 0;
 
-
         String tipoValorMIN = null, tipoValorMP = null, tipoValorMAX = null;
         double gastoMIN = 0, gastoMP = 0, gastoMAX = 0;
 
@@ -49,57 +50,48 @@ public class MonteCarloDAO {
 
         if (connection != null) {
 
-
             String idVersionQuery = """
-                    
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
-                    
+
+                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+
                     """;
 
-
-
-
-
-
             String oportunidadObjetivoQuery = """
-                SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo, regimenfiscal
-                FROM catalogo.claveobjetivovw\s
-                WHERE idversion = ? AND idoportunidadobjetivo = ?
-        """;
+                            SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo, regimenfiscal
+                            FROM catalogo.claveobjetivovw\s
+                            WHERE idversion = ? AND idoportunidadobjetivo = ?
+                    """;
 
             String VolumetriaQuery = """
-        SELECT idoportunidadobjetivo, pce, area, percentil 
-        FROM catalogo.volumetriaoportunidadvw 
-        WHERE idversion = ? AND idoportunidadobjetivo = ? AND percentil IN (10, 90)
-        """;
+                    SELECT idoportunidadobjetivo, pce, area, percentil
+                    FROM catalogo.volumetriaoportunidadvw
+                    WHERE idversion = ? AND idoportunidadobjetivo = ? AND percentil IN (10, 90)
+                    """;
 
             String GastoInicialQuery = """
-        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo           
-        FROM catalogo.gastoinicialoportunidadvw 
-        WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
-        """;
-
+                    SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, gasto, idversion, idhidrocarburo
+                    FROM catalogo.gastoinicialoportunidadvw
+                    WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String DeclinacionQuery = """
-        SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, primdeclinacionoportunidad, idversion
-        FROM catalogo.declinacionoportunidadvw
-        WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
-        """;
-
+                    SELECT DISTINCT idoportunidadobjetivo, idtipovalor, tipovalor, primdeclinacionoportunidad, idversion
+                    FROM catalogo.declinacionoportunidadvw
+                    WHERE idtipovalor IN (1, 2, 3) AND idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String fcQuery = """
-                SELECT mediaaceite/mediapce AS fc_aceite, mediagas/mediapce AS fc_gas, mediacondensado/mediapce AS fc_condensado
-                FROM catalogo.mediavolumetriaoportunidadtbl
-                WHERE idoportunidadobjetivo = ? AND idversion = ?
-                """;
-
+                    SELECT mediaaceite/mediapce AS fc_aceite, mediagas/mediapce AS fc_gas, mediacondensado/mediapce AS fc_condensado
+                    FROM catalogo.mediavolumetriaoportunidadtbl
+                    WHERE idoportunidadobjetivo = ? AND idversion = ?
+                    """;
 
             String queryExploratorio = """
-        SELECT * 
-        FROM inversion.exploratoriooportunidadvw 
-        WHERE idversion = ? 
-        AND idoportunidadobjetivo = ?
-        """;
+                    SELECT *
+                    FROM inversion.exploratoriooportunidadvw
+                    WHERE idversion = ?
+                    AND idoportunidadobjetivo = ?
+                    """;
 
             String queryDesarrollo = """
                     SELECT * FROM
@@ -108,36 +100,32 @@ public class MonteCarloDAO {
                     AND idoportunidadobjetivo= ?
                     """;
 
-
             String queryInversion = """
-                    
+
                     SELECT * FROM inversion.otrosdatostbl WHERE idversion= ? AND idoportunidadobjetivo= ?
-                    
-                    
+
+
                     """;
-
-
 
             Oportunidad oportunidadObj = null;
             int idhidrocarburo = 0;
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
-                 PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
-                 PreparedStatement statement2 = connection.prepareStatement(VolumetriaQuery);
-                 PreparedStatement statement3 = connection.prepareStatement(GastoInicialQuery);
-                 PreparedStatement statement4 = connection.prepareStatement(DeclinacionQuery);
-                 PreparedStatement statement5 = connection.prepareStatement(fcQuery);
-                 PreparedStatement statement6 = connection.prepareStatement(queryExploratorio);
-                 PreparedStatement statement7 = connection.prepareStatement(queryDesarrollo);
-                 PreparedStatement statement8 = connection.prepareStatement(queryInversion);
-
+                    PreparedStatement statement1 = connection.prepareStatement(oportunidadObjetivoQuery);
+                    PreparedStatement statement2 = connection.prepareStatement(VolumetriaQuery);
+                    PreparedStatement statement3 = connection.prepareStatement(GastoInicialQuery);
+                    PreparedStatement statement4 = connection.prepareStatement(DeclinacionQuery);
+                    PreparedStatement statement5 = connection.prepareStatement(fcQuery);
+                    PreparedStatement statement6 = connection.prepareStatement(queryExploratorio);
+                    PreparedStatement statement7 = connection.prepareStatement(queryDesarrollo);
+                    PreparedStatement statement8 = connection.prepareStatement(queryInversion);
 
             ) {
 
                 preparedStatement.setString(1, version);
 
                 ResultSet preparedStatementQuery = preparedStatement.executeQuery();
-                int actualIdVersion = 0;  // Valor por defecto
+                int actualIdVersion = 0; // Valor por defecto
                 if (preparedStatementQuery.next()) {
                     actualIdVersion = preparedStatementQuery.getInt("idversion");
                     System.out.println("----------------");
@@ -148,10 +136,6 @@ public class MonteCarloDAO {
                     System.err.println("No se encontró idVersion para la versión 'VersionMontecarlos1'.");
                     return null;
                 }
-
-
-
-
 
                 statement1.setInt(1, actualIdVersion);
                 statement1.setInt(2, idOportunidadObjetivo);
@@ -185,8 +169,6 @@ public class MonteCarloDAO {
                         }
                     }
 
-
-
                     // GastoInicial Query
                     statement3.setInt(1, idOportunidadObjetivo);
                     statement3.setInt(2, actualIdVersion);
@@ -197,7 +179,6 @@ public class MonteCarloDAO {
                         String tipoValor = resultSet3.getString("tipovalor");
                         double gasto = resultSet3.getDouble("gasto");
                         idhidrocarburo = resultSet1.getInt("idhidrocarburo");
-
 
                         switch (tipoValor) {
                             case "MIN":
@@ -223,7 +204,6 @@ public class MonteCarloDAO {
                     while (resultSet4.next()) {
                         String tipoValor = resultSet4.getString("tipovalor");
                         double primDeclinacion = resultSet4.getDouble("primdeclinacionoportunidad");
-
 
                         switch (tipoValor) {
                             case "MIN":
@@ -284,10 +264,6 @@ public class MonteCarloDAO {
                         }
                     }
 
-
-
-
-
                     statement7.setInt(1, actualIdVersion);
                     statement7.setInt(2, idOportunidadObjetivo);
 
@@ -323,7 +299,7 @@ public class MonteCarloDAO {
                         }
                     }
 
-// Ejecutando la consulta
+                    // Ejecutando la consulta
                     // Declaración de las variables
                     // Declaración de las variables
                     int idtipovalor = 0;
@@ -340,7 +316,7 @@ public class MonteCarloDAO {
                     double buquetanquecompra = 0.0;
                     double buquetanquerenta = 0.0;
 
-// Variables para valores mínimos
+                    // Variables para valores mínimos
                     double plataformadesarrolloMin = 0.0;
                     double lineadedescargaMin = 0.0;
                     double estacioncompresionMin = 0.0;
@@ -354,7 +330,7 @@ public class MonteCarloDAO {
                     double buquetanquecompraMin = 0.0;
                     double buquetanquerentaMin = 0.0;
 
-// Variables para valores promedio (MP)
+                    // Variables para valores promedio (MP)
                     double plataformadesarrolloMp = 0.0;
                     double lineadedescargaMp = 0.0;
                     double estacioncompresionMp = 0.0;
@@ -368,7 +344,7 @@ public class MonteCarloDAO {
                     double buquetanquecompraMp = 0.0;
                     double buquetanquerentaMp = 0.0;
 
-// Variables para valores máximos
+                    // Variables para valores máximos
                     double plataformadesarrolloMax = 0.0;
                     double lineadedescargaMax = 0.0;
                     double estacioncompresionMax = 0.0;
@@ -382,7 +358,7 @@ public class MonteCarloDAO {
                     double buquetanquecompraMax = 0.0;
                     double buquetanquerentaMax = 0.0;
 
-// Asumiendo que la consulta ya fue configurada y ejecutada
+                    // Asumiendo que la consulta ya fue configurada y ejecutada
                     statement8.setInt(1, actualIdVersion);
                     statement8.setInt(2, idOportunidadObjetivo);
 
@@ -453,33 +429,29 @@ public class MonteCarloDAO {
                         }
                     }
 
-
-
-                    InversionOportunidad InversionOportunidad = new InversionOportunidad(plataformadesarrolloMin, lineadedescargaMin, estacioncompresionMin,
-                            ductoMin, bateriaMin, arbolessubmarinosMin, manifoldsMin, risersMin, sistemasdecontrolMin, cubiertadeprocesMin, buquetanquecompraMin, buquetanquerentaMin,
+                    InversionOportunidad InversionOportunidad = new InversionOportunidad(plataformadesarrolloMin,
+                            lineadedescargaMin, estacioncompresionMin,
+                            ductoMin, bateriaMin, arbolessubmarinosMin, manifoldsMin, risersMin, sistemasdecontrolMin,
+                            cubiertadeprocesMin, buquetanquecompraMin, buquetanquerentaMin,
                             plataformadesarrolloMp, lineadedescargaMp, estacioncompresionMp, ductoMp, bateriaMp,
-                            arbolessubmarinosMp,manifoldsMp,risersMp,sistemasdecontrolMp,cubiertadeprocesMp,buquetanquecompraMp,buquetanquerentaMp,
+                            arbolessubmarinosMp, manifoldsMp, risersMp, sistemasdecontrolMp, cubiertadeprocesMp,
+                            buquetanquecompraMp, buquetanquerentaMp,
                             plataformadesarrolloMax, lineadedescargaMax, estacioncompresionMax, ductoMax, bateriaMax,
-                            arbolessubmarinosMax, manifoldsMax, risersMax, sistemasdecontrolMax, cubiertadeprocesMax, buquetanquecompraMax, buquetanquerentaMax
+                            arbolessubmarinosMax, manifoldsMax, risersMax, sistemasdecontrolMax, cubiertadeprocesMax,
+                            buquetanquecompraMax, buquetanquerentaMax
 
-                            );
-
+                    );
 
                     oportunidadObj = new Oportunidad(
-                            actualIdVersion,idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
-                            hidrocarburo, tipoOportunidad, pg,gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
+                            actualIdVersion, idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
+                            hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
                             primDeclinacionMIN, primDeclinacionMP, primDeclinacionMAX, fcAceite, fcGas, fcCondensado,
                             infraestructuraMin, infraestructuraMP, infraestructuraMax,
                             perforacionMin, perforacionMP, perforacionMax,
                             terminacionMin, terminacionMP, terminacionMax,
                             infraestructuraMinDES, infraestructuraMPDES, infraestructuraMaxDES,
                             perforacionMinDES, perforacionMPDES, perforacionMaxDES,
-                            terminacionMinDES, terminacionMPDES, terminacionMaxDES, InversionOportunidad
-                    );
-
-
-
-
+                            terminacionMinDES, terminacionMPDES, terminacionMaxDES, InversionOportunidad);
 
                     return oportunidadObj;
 
@@ -502,18 +474,19 @@ public class MonteCarloDAO {
         return null;
     }
 
-    public Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota, double declinada, double pce, double area) {
+    public Map<Integer, Double> executeProductionQuery(int idVersion, int idOportunidadObjetivo, double cuota,
+            double declinada, double pce, double area) {
         Map<Integer, Double> resultMap = new HashMap<>();
         String productionQuery = "SELECT aanio, ctotalanual FROM calculo.spp_produccionanual(?, ?, ?, ?, ?, ?)";
         String idVersionQuery = """
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?      
-                    """;
+                SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+                """;
         try (Connection connection = getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
-             PreparedStatement statement = connection.prepareStatement(productionQuery)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(idVersionQuery);
+                PreparedStatement statement = connection.prepareStatement(productionQuery)) {
 
             ResultSet preparedStatementQuery = preparedStatement.executeQuery();
-            int actualIdVersion = idVersion;  // Valor por defecto
+            int actualIdVersion = idVersion; // Valor por defecto
             if (preparedStatementQuery.next()) {
                 actualIdVersion = preparedStatementQuery.getInt("idversion");
             } else {
@@ -533,11 +506,8 @@ public class MonteCarloDAO {
                     int anio = resultSet.getInt("aanio");
                     double ctotalanual = resultSet.getDouble("ctotalanual");
 
-
-
                     resultMap.put(anio, ctotalanual); // Guardamos el año y la producción anual
                 }
-
 
             }
         } catch (SQLException e) {
@@ -551,11 +521,10 @@ public class MonteCarloDAO {
         double resultado = 0.0;
         int idVersionAct = 0;
         String idVersionQuery = """
-                    
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
-                    
-                    """;
 
+                SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+
+                """;
 
         String query = "SELECT mediaarea " +
                 "FROM catalogo.mediavolumetriaoportunidadtbl " +
@@ -567,11 +536,10 @@ public class MonteCarloDAO {
             stmt.setString(1, idVersion);
 
             try (ResultSet resultSet = stmt.executeQuery()) {
-                if(resultSet.next()) {
+                if (resultSet.next()) {
                     idVersionAct = resultSet.getInt("idversion");
                 }
             }
-
 
             PreparedStatement stmt2 = connection.prepareStatement(query);
             // Asignar los parámetros
@@ -596,10 +564,10 @@ public class MonteCarloDAO {
         double resultado = 0.0;
         int idVersionAct = 0;
         String idVersionQuery = """
-                    
-                    SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?     
-                    
-                    """;
+
+                SELECT idversion FROM catalogo.versiontbl WHERE nombreversion = ?
+
+                """;
 
         String kmQuery = """
                     SELECT idoportunidadobjetivo, idoportunidad,idversion, areakmasignacion
@@ -631,7 +599,31 @@ public class MonteCarloDAO {
         return resultado;
     }
 
+    public List<Map<String, Object>> getMultiOjbectivo(int idoportunidad) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String query = """
+                select claveobjetivo, idoportunidad, idoportunidadobjetivo, profundidadpozodesarrollo, idversion
+                from catalogo.reloportunidadobjetivotbl where idoportunidad = ?
+                order by profundidadpozodesarrollo desc
+                """;
+
+        try (Connection connection = getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            preparedStatement.setInt(1, idoportunidad);
+            ResultSet rsOportunidad = preparedStatement.executeQuery();
+            while (rsOportunidad.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("claveobjetivo", rsOportunidad.getString("claveobjetivo"));
+                row.put("idoportunidad", rsOportunidad.getInt("idoportunidad"));
+                row.put("idoportunidadobjetivo", rsOportunidad.getInt("idoportunidadobjetivo"));
+                row.put("idversion", rsOportunidad.getInt("idversion"));
+                results.add(row);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al ejecutar la consulta: " + e.getMessage());
+
+        }
+        return results;
+    }
+
 }
-
-
-
