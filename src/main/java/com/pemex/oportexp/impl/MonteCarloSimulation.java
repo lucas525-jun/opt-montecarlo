@@ -476,7 +476,10 @@ public class MonteCarloSimulation {
             }
         }
 
-        double reporte804 = calcularReporte804(kilometraje, exitos, cantidadIteraciones);
+        double kilometrajeCalculado = calcularReporte804(kilometraje, oportunidad.getPlanDesarrollo(), oportunidad.getPg());
+        List<Double> reporte804 = new ArrayList<>();
+        reporte804.add(kilometraje);
+        reporte804.add(kilometrajeCalculado);
         List<Double> reporte805 = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada, cantidadIteraciones);
 
         resultados = new ArrayList<>(resultadosQueue);
@@ -590,8 +593,19 @@ public class MonteCarloSimulation {
         return reporte805;
     }
 
-    private double calcularReporte804(double kilometraje, int cantExitos, int cantidadIteraciones) {
-        return kilometraje - ((cantExitos * kilometraje) / cantidadIteraciones);
+    private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
+
+        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1); // Toma todo después del último espacio
+        int result = Integer.parseInt(number);
+
+        if (result == 1) {
+            return kilometraje * (1 - pg);
+        } else if (result == 2) {
+            return kilometraje;
+        } else if (result >= 3) {
+            return kilometraje * pg;
+        }
+        return kilometraje;
     }
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {

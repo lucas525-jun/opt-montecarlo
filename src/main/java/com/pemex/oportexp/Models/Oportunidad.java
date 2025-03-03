@@ -5,6 +5,7 @@ public class Oportunidad {
     private int actualIdVersion;
     private int idOportunidadObjetivo; // ID del objetivo de oportunidad
     private String oportunidad;          // Descripción de la oportunidad
+    private String planDesarrollo;
     private double pceP10;
     private double pceP90;  // PCE (Probabilidad de Éxito)
     private double area10;
@@ -41,7 +42,7 @@ public class Oportunidad {
     InversionOportunidad inversionOportunidad;
 
     // Constructor actualizado
-    public Oportunidad(int actualIdVersion,  int idOportunidadObjetivo, String oportunidad, double pceP10, double pceP90,
+    public Oportunidad(int actualIdVersion,  int idOportunidadObjetivo, String oportunidad, String planDesarrollo,  double pceP10, double pceP90,
                        double area10, double area90, String hidrocarburo, String tipoOportunidad, double pg,
                        double gastoMINAceite, double gastoMPAceite, double gastoMAXAceite,
                        int idhidrocarburo,
@@ -58,6 +59,7 @@ public class Oportunidad {
         this.actualIdVersion = actualIdVersion;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
         this.oportunidad = oportunidad;
+        this.planDesarrollo = planDesarrollo;
         this.pceP10 = pceP10;
         this.pceP90 = pceP90;
         this.area10 = area10;
@@ -102,6 +104,7 @@ public class Oportunidad {
 
     public int getIdOportunidadObjetivo() { return idOportunidadObjetivo; }
     public String getOportunidad() { return oportunidad; }
+    public String getPlanDesarrollo() { return planDesarrollo; }
     public double getPceP10() { return pceP10; }
     public double getPceP90() { return pceP90; }
     public double getArea10() { return area10; }
