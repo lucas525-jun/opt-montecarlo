@@ -3,22 +3,26 @@ package com.pemex.oportexp.Controller;
 import com.pemex.oportexp.Services.ExcelService;
 import com.pemex.oportexp.Services.MonteCarloService;
 import com.pemex.oportexp.impl.MonteCarloSimulation;
+import com.pemex.oportexp.impl.MonteCarloSimulationMultiObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import com.pemex.oportexp.impl.MonteCarloDAO;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/simulation")
 public class MonteCarloSimulationController {
-    @Autowired
-    private ExcelService excelService;
 
     @Autowired
     private MonteCarloService monteCarloService;
+
+    @Autowired
+    private MonteCarloDAO monteCarloDAO;
 
     @Autowired
     RestTemplate restTemplate;
@@ -31,16 +35,36 @@ public class MonteCarloSimulationController {
 
     @GetMapping("/run")
     public ResponseEntity<?> runSimulation(@RequestParam("Version") String version,
-            @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
-        MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo);
+            @RequestParam("IdOportunidadObjetivo") int idOportunidadObjetivo,
+            @RequestParam("IdOportunidad") int idOportunidad) {
 
+        int num = 1;
+
+        List<Map<String, Object>> multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
+        // System.err.println("multiObjetivos size : " + multiObjetivos.size());
+        List<Object> resultados;
+        // if (num == 1) {
+        if (multiObjetivos.size() == 1) {
+            System.err.println("1 : " + multiObjetivos.get(0).get("idoportunidadobjetivo"));
+            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version,
+                    (int) multiObjetivos.get(0).get("idoportunidadobjetivo"));
+            resultados = monteCarloSimulation.runSimulation().getBody();
+
+        } else {
+            System.err.println("multi object started.");
+
+            int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
+
+            for (int i = 0; i < multiObjetivos.size(); i++) {
+                idOportunidadObjetivoArray[i] = (int) multiObjetivos.get(i).get("idoportunidadobjetivo");
+            }
+            MonteCarloSimulationMultiObject monteCarloSimulationMultiObject = monteCarloService
+                    .createSimulationForMulti(
+                            version,
+                            idOportunidadObjetivoArray);
+            resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
+        }
         try {
-            // Ejecuta la simulación y obtiene los datos
-            List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
-
-            // System.err.println("Data sent to generate-excel: {}" + resultados);
-
-            // URL del servidor Node.js
             String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort + "/generate-excel";
 
             // Configura los headers
@@ -78,22 +102,24 @@ public class MonteCarloSimulationController {
         }
     }
 
-    @GetMapping("/runJson")
-    public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String version,
-            @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
+    // @GetMapping("/runJson")
+    // public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String
+    // version,
+    // @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
 
-        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo);
+    // MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version,
+    // idOportunidadObjetivo);
 
-        try {
-            // Ejecuta la simulación y obtiene los datos
-            List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
+    // try {
+    // // Ejecuta la simulación y obtiene los datos
+    // List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
 
-            // Devuelve los resultados directamente
-            return ResponseEntity.ok(resultados);
+    // // Devuelve los resultados directamente
+    // return ResponseEntity.ok(resultados);
 
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error en la simulación: " + e.getMessage());
-        }
-    }
+    // } catch (Exception e) {
+    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    // .body("Error en la simulación: " + e.getMessage());
+    // }
+    // }
 }

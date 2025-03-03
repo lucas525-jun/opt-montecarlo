@@ -45,7 +45,7 @@ public class MonteCarloSimulation {
         this.idOportunidadObjetivo = idOportunidadObjetivo;
     }
 
-    public void setEconomicEvaHostAndPort(String host, String port){
+    public void setEconomicEvaHostAndPort(String host, String port) {
         this.economicEvaHost = host;
         this.economicEvaPort = port;
     }
@@ -412,7 +412,6 @@ public class MonteCarloSimulation {
                             triangularInversionManifolds, triangularInversionRisers,
                             triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,
                             triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, restTemplate);
-
 
                     // Set host and port for Economic Eva service
                     simulacionMicros.setEconomicEvaHost(economicEvaHost);
