@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import com.pemex.oportexp.impl.MonteCarloDAO;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -39,9 +40,9 @@ public class MonteCarloSimulationController {
             @RequestParam("IdOportunidad") int idOportunidad) {
 
         int num = 1;
+        List<Map<String, Object>> multiObjetivos;
 
-        List<Map<String, Object>> multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
-        // System.err.println("multiObjetivos size : " + multiObjetivos.size());
+        multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
         // if (num == 1) {
         if (multiObjetivos.size() == 1) {
