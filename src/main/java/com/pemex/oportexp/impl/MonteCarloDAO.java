@@ -49,10 +49,10 @@ public class MonteCarloDAO {
                 """;
 
         String oportunidadObjetivoQuery = """
-                        SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo, regimenfiscal
-                        FROM catalogo.claveobjetivovw\s
-                        WHERE idversion = ? AND idoportunidadobjetivo = ?
-                """;
+                            SELECT idoportunidadobjetivo, oportunidad, hidrocarburo, tipooportunidad, pg, idhidrocarburo, regimenfiscal, plandesarrollo
+                            FROM catalogo.claveobjetivovw\s
+                            WHERE idversion = ? AND idoportunidadobjetivo = ?
+                    """;
 
         String VolumetriaQuery = """
                 SELECT idoportunidadobjetivo, pce, area, percentil
@@ -140,6 +140,7 @@ public class MonteCarloDAO {
                 String oportunidad = resultSet1.getString("oportunidad");
                 String hidrocarburo = resultSet1.getString("hidrocarburo");
                 String tipoOportunidad = resultSet1.getString("tipooportunidad");
+                String planDesarrollo = resultSet1.getString("plandesarrollo");
                 int idhidrocarburoo = resultSet1.getInt("idhidrocarburo");
                 double pg = resultSet1.getDouble("pg");
 
@@ -436,7 +437,7 @@ public class MonteCarloDAO {
                 );
 
                 oportunidadObj = new Oportunidad(
-                        actualIdVersion, idOportunidadObjetivoResult, oportunidad, pce10, pce90, area10, area90,
+                        actualIdVersion, idOportunidadObjetivoResult, oportunidad, planDesarrollo, pce10, pce90, area10, area90,
                         hidrocarburo, tipoOportunidad, pg, gastoMIN, gastoMP, gastoMAX, idhidrocarburo,
                         primDeclinacionMIN, primDeclinacionMP, primDeclinacionMAX, fcAceite, fcGas, fcCondensado,
                         infraestructuraMin, infraestructuraMP, infraestructuraMax,
