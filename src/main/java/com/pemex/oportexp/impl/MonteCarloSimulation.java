@@ -538,6 +538,9 @@ public class MonteCarloSimulation {
     }
 
     private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
+
+        if(percentil10 == percentil90) return percentil10;
+
         NormalDistribution normalStandard = new NormalDistribution(0, 1);
         double z90 = normalStandard.inverseCumulativeProbability(0.9);
         double mediaLog = (Math.log(percentil10) + Math.log(percentil90)) / 2;
