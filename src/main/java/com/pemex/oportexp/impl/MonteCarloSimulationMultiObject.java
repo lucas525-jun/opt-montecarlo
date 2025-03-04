@@ -324,17 +324,20 @@ public class MonteCarloSimulationMultiObject {
 
         executor.shutdown();
 
-        double[] reporteArray804 = new double[numOportunidades];
         List<Double>[] reporteArray805 = new List[numOportunidades];
-
+        List<Double> reporte804 = new ArrayList<>();
+        double kilometrajeSum = 0.0;
+        double kilometrajeCalculadoSum = 0.0;
         // Calculate for each opportunity
         for (int i = 0; i < numOportunidades; i++) {
-            reporteArray804[i] = calcularReporte804(kilometraje[i], exitos[i], cantidadIteraciones);
+            kilometrajeSum += kilometraje[i];
+            kilometrajeCalculadoSum += calcularReporte804(kilometraje[i], oportunidad[i].getPlanDesarrollo(), oportunidad[i].getPg());
             reporteArray805[i] = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada[i],
                     cantidadIteraciones);
         }
+        reporte804.add(kilometrajeSum);
+        reporte804.add(kilometrajeCalculadoSum);
 
-        double reporte804 = mergeReporte804(reporteArray804);
         List<Double> reporte805 = mergeReporte805(reporteArray805);
 
         responseData = new ArrayList<>(resultadosQueue);
@@ -417,13 +420,16 @@ public class MonteCarloSimulationMultiObject {
         }
     }
 
-    public static double mergeReporte804(double[] reporteArray804) {
-        double sum = 0.0;
-        for (double value : reporteArray804) {
-            sum += value;
-        }
-        return sum / reporteArray804.length; // Average (change to sum if needed)
-    }
+    // public static double mergeReporte804(double[][] reporteArray804) {
+    //     double sum = 0.0;
+    //     List<Double> reporte804 = new ArrayList<>();
+    //     for (int i = 0; i < numOportunidades; i++) {
+    //         for (double value : reporteArray804[i]) {
+    //             sum += value;
+    //         }
+    //     }
+    //     return sum / reporteArray804.length; 
+    // }
 
     // Flatten the List<Double>[] into a single List<Double>
     public static List<Double> mergeReporte805(List<Double>[] reporteArray805) {
@@ -911,9 +917,21 @@ public class MonteCarloSimulationMultiObject {
         return reporte805;
     }
 
-    private double calcularReporte804(double kilometraje, int cantExitos, int cantidadIteraciones) {
-        return kilometraje - ((cantExitos * kilometraje) / cantidadIteraciones);
+    private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
+
+        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1); // Toma todo después del último espacio
+        int result = Integer.parseInt(number);
+
+        if (result == 1) {
+            return kilometraje * (1 - pg);
+        } else if (result == 2) {
+            return kilometraje;
+        } else if (result >= 3) {
+            return kilometraje * pg;
+        }
+        return kilometraje;
     }
+
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto, int objectivoIndex) {
         if (objectivoIndex < 0 || objectivoIndex >= numOportunidades) {
