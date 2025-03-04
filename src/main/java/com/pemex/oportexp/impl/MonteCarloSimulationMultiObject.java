@@ -19,6 +19,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MonteCarloSimulationMultiObject {
     @Setter
@@ -41,6 +42,8 @@ public class MonteCarloSimulationMultiObject {
     private List<Double>[] randomNumbers;
     private double[] mediaTruncada;
     private double[] kilometraje;
+    private final AtomicReference<Oportunidad[]> oportunidadRef = new AtomicReference<>();
+
 
     private double fcAceite;
     private double fcCondensado;
@@ -117,6 +120,8 @@ public class MonteCarloSimulationMultiObject {
     }
 
     private InvestmentVariables[] investments;
+    private double[][] precomputedRandomNumbers;
+
 
     public MonteCarloSimulationMultiObject(String version, int[] idOportunidadObjetivo, String economicEvaHost,
             String economicEvaPort) {
@@ -152,6 +157,8 @@ public class MonteCarloSimulationMultiObject {
     public void initializeSimulation() {
         initializeArrays();
         loadOportunidades();
+        oportunidadRef.set(oportunidad);
+
 
     }
 
@@ -168,17 +175,21 @@ public class MonteCarloSimulationMultiObject {
         this.mediaTruncada = new double[numOportunidades];
         this.kilometraje = new double[numOportunidades];
         this.randomNumbers = new ArrayList[numOportunidades];
+        this.precomputedRandomNumbers = new double[numOportunidades][cantidadIteraciones];
+
+
         for (int i = 0; i < numOportunidades; i++) {
             this.randomNumbers[i] = IntStream.range(0, cantidadIteraciones * numberOfVariables)
                     .mapToDouble(j -> ThreadLocalRandom.current().nextDouble())
                     .boxed()
                     .collect(Collectors.toList());
+            for (int j = 0; j < cantidadIteraciones; j++) {
+                precomputedRandomNumbers[i][j] = ThreadLocalRandom.current().nextDouble();
+            }
         }
     }
 
     private void loadOportunidades() {
-        // System.err.println("idOportunidadObjetivo 0 :" + idOportunidadObjetivo[0]);
-        // System.err.println("idOportunidadObjetivo 1 :" + idOportunidadObjetivo[1]);
         for (int i = 0; i < numOportunidades; i++) {
             try {
                 Oportunidad eachOportunidad = monteCarloDAO.executeQuery(version, idOportunidadObjetivo[i]);
@@ -276,40 +287,42 @@ public class MonteCarloSimulationMultiObject {
         Sheet sheet = workbook.createSheet("Simulación Monte Carlo");
         createHeaderRow(sheet, workbook);
 
-        int optimalThreads = Runtime.getRuntime().availableProcessors();
-        ForkJoinPool customThreadPool = new ForkJoinPool(optimalThreads);
+        int threadPoolSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+        List<Future<Void>> futures = new ArrayList<>();
 
-        try {
-            customThreadPool.submit(() -> IntStream.range(0,
-                    cantidadIteraciones).parallel().forEach(i -> {
-                        Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
-                        excelRowBuffers.put(i, excelRowData);
+        for (int i = 0; i < cantidadIteraciones; i++) {
+            int finalI = i;
+            futures.add(executor.submit(() -> {
+                Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
+                excelRowBuffers.put(finalI, excelRowData);
 
-                        ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = simulationParametersMatrix
-                                .get(i);
+                ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = simulationParametersMatrix
+                        .get(finalI);
 
-                        simulateOpportunityRecursively(0, i, excelRowData);
+                simulateOpportunityRecursively(0, finalI, excelRowData);
 
-                        if (paramsArray != null) {
-                            resultados[i] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
-                            synchronized (resultadosQueue) {
-                                resultadosQueue.add(resultados[i]);
-                            }
-                        } else {
-                            System.err.println("No simulation parameters found for iteration " + i);
-                        }
-                    })).join();
-        } finally {
-            customThreadPool.shutdown();
-            try {
-                if (!customThreadPool.awaitTermination(60, TimeUnit.SECONDS)) {
-                    customThreadPool.shutdownNow();
+                if (paramsArray != null) {
+                    resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
+                    synchronized (resultadosQueue) {
+                        resultadosQueue.add(resultados[finalI]);
+                    }
+                } else {
+                    System.err.println("No simulation parameters found for iteration " + finalI);
                 }
-            } catch (InterruptedException e) {
-                customThreadPool.shutdownNow();
-                Thread.currentThread().interrupt();
+                return null;
+            }));
+        }
+
+        for (Future<Void> future : futures) {
+            try {
+                future.get();
+            } catch (Exception e) {
+                System.err.println("Simulation task failed: " + e.getMessage());
             }
         }
+
+        executor.shutdown();
 
         double[] reporteArray804 = new double[numOportunidades];
         List<Double>[] reporteArray805 = new List[numOportunidades];
@@ -434,7 +447,7 @@ public class MonteCarloSimulationMultiObject {
 
             excelRowData.put(HEADERS_SIZE * objectivoIndex, excelNum);
 
-            if (pruebaGeologica(objectivoIndex)) {
+            if (pruebaGeologica(objectivoIndex, iterationNumber)) {
                 handleSuccessfulSimulation(objectivoIndex, excelRowData, iterationNumber);
             } else {
                 handleFailedSimulation(objectivoIndex, excelRowData, iterationNumber);
@@ -447,6 +460,10 @@ public class MonteCarloSimulationMultiObject {
         } finally {
 
         }
+    }
+
+    private Oportunidad getOportunidad(int index) {
+        return oportunidadRef.get()[index];
     }
 
     private void handleSuccessfulSimulation(int objectivoIndex, Map<Integer, Object> excelRowData,
@@ -568,11 +585,12 @@ public class MonteCarloSimulationMultiObject {
             params.setTriangularInversionBuqueTanqueRenta(0);
         }
 
-        synchronized (simulationParametersMatrix) {
-            simulationParametersMatrix
-                    .computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>())
-                    .put(objectivoIndex, params);
-        }
+        simulationParametersMatrix.compute(iterationNumber, (key, value) -> {
+            if (value == null)
+                value = new ConcurrentHashMap<>();
+            value.put(objectivoIndex, params);
+            return value;
+        });
 
     }
 
@@ -844,7 +862,12 @@ public class MonteCarloSimulationMultiObject {
         NormalDistribution normal = new NormalDistribution(mediaLog, desviacionLog);
 
         double logValue = normal.inverseCumulativeProbability(aleatorio);
-        return Math.exp(logValue);
+        double result = Math.exp(logValue);
+
+        if (Double.isNaN(result)) {
+            result = 0.0;
+        }
+        return result;
     }
 
     private double calcularLimiteEconomico(double pce) {
@@ -985,15 +1008,27 @@ public class MonteCarloSimulationMultiObject {
 
     }
 
-    private boolean pruebaGeologica(int objectivoIndex) {
-        // return true;
-        // if (objectivoIndex == 0)
-        // return true;
-        // else
-        // return true;
+    // private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
+    //     // return true;
+    //     // if (objectivoIndex == 0)
+    //     // return true;
+    //     // else
+    //     // return true;
 
-        return ThreadLocalRandom.current().nextDouble() <= oportunidad[objectivoIndex].getPg();
+    //     // return ThreadLocalRandom.current().nextDouble() <= oportunidad[objectivoIndex].getPg();
+    //     return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= getOportunidad(objectivoIndex).getPg();
+
+    // }
+
+    private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
+        Oportunidad oportunidad = getOportunidad(objectivoIndex);
+        if (oportunidad == null) {
+            System.err.println("Warning: oportunidad[" + objectivoIndex + "] is null.");
+            return false; // or handle accordingly
+        }
+        return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= oportunidad.getPg();
     }
+
 
     private Workbook createWorkbook() {
         return new XSSFWorkbook();

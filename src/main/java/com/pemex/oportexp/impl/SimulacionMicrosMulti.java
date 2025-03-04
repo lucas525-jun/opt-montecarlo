@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.lang.reflect.Field;
+import java.util.concurrent.TimeUnit;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -67,33 +68,21 @@ public class SimulacionMicrosMulti {
         }
 
         try {
-
             List<List<Object>> parameterList = opportunityParameters.values().stream().map(params -> {
                 List<Object> opportunityParamsList = new ArrayList<>();
-
-                // Use reflection to get all fields and add them to the list
                 for (Field field : params.getClass().getDeclaredFields()) {
                     field.setAccessible(true);
                     try {
                         opportunityParamsList.add(field.get(params));
                     } catch (IllegalAccessException e) {
                         System.err.println("Failed to access field: " + field.getName());
-                        opportunityParamsList.add(null); // Ensure valid list even if a field fails
+                        opportunityParamsList.add(null);
                     }
                 }
                 return opportunityParamsList;
             }).collect(Collectors.toList());
 
-            Object response = restTemplate.postForObject(
-                    "http://" + economicEvaHost + ":" + economicEvaPort + "/api/v1/getEvaluacionEconomicaMulti",
-                    parameterList,
-                    Object.class);
-
-            if (response == null) {
-                throw new RuntimeException("Null response received from evaluation endpoint");
-            }
-            return response;
-
+            return executeWithRetry(parameterList, 3);
         } catch (Exception e) {
             System.err.println("Error in simulation execution: " + e.getMessage());
             e.printStackTrace();
@@ -101,4 +90,28 @@ public class SimulacionMicrosMulti {
         }
     }
 
+    private Object executeWithRetry(List<List<Object>> parameterList, int retries) throws InterruptedException {
+        int attempt = 0;
+        while (attempt < retries) {
+            try {
+
+                return restTemplate.postForObject(
+                        "http://" + economicEvaHost + ":" + economicEvaPort + "/api/v1/getEvaluacionEconomicaMulti",
+                        parameterList, Object.class);
+
+            } catch (Exception e) {
+                attempt++;
+                System.err.println("API call failed (Attempt " + attempt + "/" + retries + "): " + e.getMessage());
+
+                if (attempt == retries) {
+                    System.err.println("Max retries reached. Failing request.");
+                    throw new RuntimeException("Failed to execute simulation after " + retries + " attempts", e);
+                }
+
+                int delay = (int) Math.pow(2, attempt) * 1000;
+                Thread.sleep(delay);
+            }
+        }
+        return null;
+    }
 }
