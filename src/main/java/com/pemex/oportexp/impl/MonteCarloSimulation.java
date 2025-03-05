@@ -179,8 +179,8 @@ public class MonteCarloSimulation {
                     excelRowData.put(1, "Éxito");
 
                     // Valores aleatorios y cálculos para éxito
-                    double aleatorioRecurso = 0.01
-                            + (0.99 - 0.01) * randomNumbers.get(baseIndex + indexAleatorioRecurso);
+                    // Same aleatorio for Recurso, Area and GastoInicial(Cuota)
+                    double aleatorioRecurso = 0.01 + (0.99 - 0.01) * randomNumbers.get(baseIndex + indexAleatorioRecurso);
 
                     double recurso = calcularRecursoProspectivo(aleatorioRecurso, oportunidad.getPceP10(),
                             oportunidad.getPceP90());
@@ -191,9 +191,7 @@ public class MonteCarloSimulation {
                     double limiteEconomico = calcularLimiteEconomico(recurso) / 12;
                     limitesEconomicosRepetidos.merge(limiteEconomico, 1, Integer::sum);
 
-                    double aleatorioGasto = randomNumbers.get(baseIndex + indexAleatorioGasto);
-
-                    double gastoTriangular = calcularGastoInicial(recurso, aleatorioGasto);
+                    double gastoTriangular = calcularGastoInicial(recurso, aleatorioRecurso);
                     excelRowData.put(4, aleatorioRecurso);
                     excelRowData.put(5, gastoTriangular);
                     ResultadoSimulacion.setGastoInicial(gastoTriangular);
@@ -209,11 +207,9 @@ public class MonteCarloSimulation {
 
                     ResultadoSimulacion.setDeclinacion(declinacion);
 
-                    double aleatorioArea = randomNumbers.get(baseIndex + indexAleatorioArea);
-
-                    double area = calcularRecursoProspectivo(aleatorioArea, oportunidad.getArea10(),
+                    double area = calcularRecursoProspectivo(aleatorioRecurso, oportunidad.getArea10(),
                             oportunidad.getArea90());
-                    excelRowData.put(8, aleatorioArea);
+                    excelRowData.put(8, aleatorioRecurso);
                     excelRowData.put(9, area);
 
                     ResultadoSimulacion.setArea(area);
