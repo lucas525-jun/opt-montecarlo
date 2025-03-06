@@ -11,6 +11,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -193,7 +194,7 @@ public class MonteCarloSimulationMultiObject {
         for (int i = 0; i < numOportunidades; i++) {
             try {
                 Oportunidad eachOportunidad = monteCarloDAO.executeQuery(version, idOportunidadObjetivo[i]);
-
+                // System.err.println("eachOportunidad " + eachOportunidad.getIdOportunidadObjetivo());
                 if (eachOportunidad == null) {
                     throw new IllegalStateException("Unable to retrieve opportunity data for index " + i);
                 }
@@ -492,7 +493,7 @@ public class MonteCarloSimulationMultiObject {
                 HEADERS_SIZE * objectivoIndex + 3, recurso);
         double limiteEconomico = calcularLimiteEconomico(recurso) / 12;
         limitesEconomicosRepetidos.merge(limiteEconomico, 1, Integer::sum);
-        calculateAndStoreSimulationResults(objectivoIndex, baseIndex, recurso, excelRowData);
+        calculateAndStoreSimulationResults(objectivoIndex, baseIndex, recurso, aleatorioRecurso, excelRowData);
 
         executeSimulationMicroservices(objectivoIndex, excelRowData, iterationNumber);
         simulateOpportunityRecursively(objectivoIndex + 1, iterationNumber, excelRowData);
@@ -626,16 +627,14 @@ public class MonteCarloSimulationMultiObject {
         }
     }
 
-    private void calculateAndStoreSimulationResults(int objectivoIndex, int baseIndex, double recurso,
-            Map<Integer, Object> excelRowData) {
+    private void calculateAndStoreSimulationResults(int objectivoIndex, int baseIndex, double recurso, double aleatorioRecurso, Map<Integer, Object> excelRowData) {
         if (oportunidad[objectivoIndex] == null) {
             throw new IllegalStateException("Oportunidad not initialized for index: " + objectivoIndex);
         }
 
-        double aleatorioGasto = randomNumbers[objectivoIndex].get(baseIndex + Indices.ALEATORIO_GASTO);
-        // aleatorioGasto = objectivoIndex == 0 ? 0.386928163472988 : 0.856955524053262;
-        double gastoTriangular = calcularGastoInicial(recurso, aleatorioGasto, objectivoIndex);
-        updateExcelData(excelRowData, HEADERS_SIZE * objectivoIndex + 4, aleatorioGasto,
+        
+        double gastoTriangular = calcularGastoInicial(recurso, aleatorioRecurso, objectivoIndex);
+        updateExcelData(excelRowData, HEADERS_SIZE * objectivoIndex + 4, aleatorioRecurso,
                 HEADERS_SIZE * objectivoIndex + 5, gastoTriangular);
 
         double aleatorioDeclinacion = randomNumbers[objectivoIndex].get(baseIndex + Indices.ALEATORIO_DECLINACION);
@@ -651,16 +650,12 @@ public class MonteCarloSimulationMultiObject {
         updateExcelData(excelRowData, HEADERS_SIZE * objectivoIndex + 6, aleatorioDeclinacion,
                 HEADERS_SIZE * objectivoIndex + 7, declinacion);
 
-        double aleatorioArea = randomNumbers[objectivoIndex].get(baseIndex + Indices.ALEATORIO_AREA);
-        // aleatorioArea = (objectivoIndex == 0) ? 0.406607107070359 :
-        // 0.593453108800162;
-
         double area = calcularRecursoProspectivo(
-                aleatorioArea,
+                aleatorioRecurso,
                 oportunidad[objectivoIndex].getArea10(),
                 oportunidad[objectivoIndex].getArea90());
 
-        updateExcelData(excelRowData, HEADERS_SIZE * objectivoIndex + 8, aleatorioArea,
+        updateExcelData(excelRowData, HEADERS_SIZE * objectivoIndex + 8, aleatorioRecurso,
                 HEADERS_SIZE * objectivoIndex + 9, area);
 
         // Store exploratory values
