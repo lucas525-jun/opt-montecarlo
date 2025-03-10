@@ -41,7 +41,7 @@ public class MonteCarloSimulationMultiObject {
     // Core simulation data
     private Oportunidad[] oportunidad;
     private List<Double>[] randomNumbers;
-    private double[]  mediaTruncada;
+    private double[] mediaTruncada;
     private double[] kilometraje;
     private final AtomicReference<Oportunidad[]> oportunidadRef = new AtomicReference<>();
 
@@ -159,6 +159,11 @@ public class MonteCarloSimulationMultiObject {
         initializeArrays();
         loadOportunidades();
         oportunidadRef.set(oportunidad);
+        try {
+            org.apache.logging.log4j.LogManager.getLogger(MonteCarloSimulationMultiObject.class);
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to initialize Log4j: " + e.getMessage());
+        }
 
 
     }
@@ -201,6 +206,7 @@ public class MonteCarloSimulationMultiObject {
 
                 setOportunidad(eachOportunidad, i);
 
+
                 // Existing validation methods
                 mediaTruncada[i] = monteCarloDAO.getMediaTruncada(version, idOportunidadObjetivo[i]);
                 validateMediaTruncada(mediaTruncada[i], i);
@@ -209,6 +215,7 @@ public class MonteCarloSimulationMultiObject {
                 validateKilometraje(kilometraje[i], i);
 
                 initializeExploratorioValues(i);
+
             } catch (Exception e) {
                 System.err.println("Error loading opportunity at index " + i + ": " + e.getMessage());
                 throw new DatabaseException("Failed to load oportunidades", e);
@@ -282,118 +289,161 @@ public class MonteCarloSimulationMultiObject {
     }
 
     public ResponseEntity<List<Object>> runSimulation() {
+       
         long startTime = System.nanoTime();
         iterationNumber.set(1);
-        Workbook workbook = createWorkbook();
-        Sheet sheet = workbook.createSheet("Simulación Monte Carlo");
-        createHeaderRow(sheet, workbook);
-
-        int threadPoolSize = Runtime.getRuntime().availableProcessors();
-        ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
-        List<Future<Void>> futures = new ArrayList<>();
-
-        for (int i = 0; i < cantidadIteraciones; i++) {
-            int finalI = i;
-            futures.add(executor.submit(() -> {
-                Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
-                excelRowBuffers.put(finalI, excelRowData);
-
-                ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = simulationParametersMatrix
-                        .get(finalI);
-
-                simulateOpportunityRecursively(0, finalI, excelRowData);
-
-                if (paramsArray != null) {
-                    resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
-                    synchronized (resultadosQueue) {
-                        resultadosQueue.add(resultados[finalI]);
-                    }
-                } else {
-                    System.err.println("No simulation parameters found for iteration " + finalI);
-                }
-                return null;
-            }));
-        }
-
-        for (Future<Void> future : futures) {
-            try {
-                future.get();
-            } catch (Exception e) {
-                System.err.println("Simulation task failed: " + e.getMessage());
-            }
-        }
-
-        executor.shutdown();
-
-        List<Double>[] reporteArray805 = new List[numOportunidades];
-        List<Double> reporte804 = new ArrayList<>();
-        double kilometrajeSum = 0.0;
-        double kilometrajeCalculadoSum = 0.0;
-        // Calculate for each opportunity
-        for (int i = 0; i < numOportunidades; i++) {
-            kilometrajeSum += kilometraje[i];
-            kilometrajeCalculadoSum += calcularReporte804(kilometraje[i], oportunidad[i].getPlanDesarrollo(), oportunidad[i].getPg());
-            reporteArray805[i] = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada[i],
-                    cantidadIteraciones);
-        }
-        reporte804.add(kilometrajeSum);
-        reporte804.add(kilometrajeCalculadoSum);
-
-        List<Double> reporte805 = mergeReporte805(reporteArray805);
-
-        responseData = new ArrayList<>(resultadosQueue);
-
-        if (!responseData.isEmpty() && responseData.get(0) instanceof Map) {
-            Map<String, Object> primerElemento = (Map<String, Object>) responseData.get(0);
-            primerElemento.put("reporte804", reporte804);
-            primerElemento.put("reporte805", reporte805);
-        }
-
-        writeResultsToExcel(sheet);
-
+        
+        // Create workbook and sheet ONCE before starting threads
+        Workbook workbook = null;
+        Sheet sheet = null;
+        
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            String tempFileName = "resultadosMultiObjectivo_temp_merged" + oportunidad[0].getIdOportunidadObjetivo()
-                    + ".json";
-            String resFileName = "resultadosMultiObjectivo_merged" + oportunidad[0].getIdOportunidadObjetivo()
-                    + ".json";
-
-            File tempFile = new File(tempFileName);
-            File resFile = new File(resFileName);
-            objectMapper.writeValue(tempFile, responseData);
-
-            if (resFile.exists()) {
-                if (!resFile.delete()) {
-                    throw new IOException("No se pudo eliminar el archivo de destino: " + resFileName);
+            // Initialize workbook before any threading
+            workbook = createWorkbook();
+            sheet = workbook.createSheet("Simulación Monte Carlo");
+            createHeaderRow(sheet, workbook);
+            
+            int threadPoolSize = Runtime.getRuntime().availableProcessors();
+            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+            List<Future<Void>> futures = new ArrayList<>();
+            
+            for (int i = 0; i < cantidadIteraciones; i++) {
+                int finalI = i;
+                futures.add(executor.submit(() -> {
+                    Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
+                    excelRowBuffers.put(finalI, excelRowData);
+                    
+                    ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = 
+                        simulationParametersMatrix.get(finalI);
+                    
+                    simulateOpportunityRecursively(0, finalI, excelRowData);
+                    
+                    if (paramsArray != null) {
+                        resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
+                        synchronized (resultadosQueue) {
+                            resultadosQueue.add(resultados[finalI]);
+                        }
+                    } else {
+                        System.err.println("No simulation parameters found for iteration " + finalI);
+                    }
+                    return null;
+                }));
+            }
+            
+            // Wait for all futures to complete
+            for (Future<Void> future : futures) {
+                try {
+                    future.get();
+                } catch (Exception e) {
+                    System.err.println("Simulation task failed: " + e.getMessage());
                 }
             }
-
-            if (tempFile.renameTo(resFile)) {
-                System.out.println("Resultados guardados en " + resFileName);
-            } else {
-                System.err.println("Error al renombrar el archivo temporal: " + tempFileName);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try (FileOutputStream fileOut = new FileOutputStream(
-                "MonteCarloSimulationMultiObject" + oportunidad[0].getIdOportunidadObjetivo() + ".xlsx")) {
-            workbook.write(fileOut);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
+            
+            // Proper executor shutdown with timeout
             try {
-                workbook.close();
+                executor.shutdown();
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+            
+            // Process results after all simulations are complete
+            List<Double>[] reporteArray805 = new List[numOportunidades];
+            List<Double> reporte804 = new ArrayList<>();
+            double kilometrajeSum = 0.0;
+            double kilometrajeCalculadoSum = 0.0;
+            
+            // Calculate for each opportunity
+            for (int i = 0; i < numOportunidades; i++) {
+                kilometrajeSum += kilometraje[i];
+                kilometrajeCalculadoSum += calcularReporte804(
+                    kilometraje[i], 
+                    oportunidad[i].getPlanDesarrollo(), 
+                    oportunidad[i].getPg()
+                );
+                reporteArray805[i] = escaleraLimEconomicos(
+                    limitesEconomicosRepetidos, 
+                    mediaTruncada[i],
+                    cantidadIteraciones
+                );
+            }
+            reporte804.add(kilometrajeSum);
+            reporte804.add(kilometrajeCalculadoSum);
+            
+            List<Double> reporte805 = mergeReporte805(reporteArray805);
+            
+            responseData = new ArrayList<>(resultadosQueue);
+            
+            if (!responseData.isEmpty() && responseData.get(0) instanceof Map) {
+                Map<String, Object> primerElemento = (Map<String, Object>) responseData.get(0);
+                primerElemento.put("reporte804", reporte804);
+                primerElemento.put("reporte805", reporte805);
+            }
+            
+            // Write results to Excel only after all processing is complete
+            writeResultsToExcel(sheet);
+            
+            // Save workbook to file
+            try (FileOutputStream fileOut = new FileOutputStream(
+                    "MonteCarloSimulationMultiObject" + oportunidad[0].getIdOportunidadObjetivo() + ".xlsx")) {
+                workbook.write(fileOut);
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error writing Excel file: " + e.getMessage());
+            }
+            
+            // Save JSON results
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+                
+                String tempFileName = "resultadosMultiObjectivo_temp_merged" + 
+                    oportunidad[0].getIdOportunidadObjetivo() + ".json";
+                String resFileName = "resultadosMultiObjectivo_merged" + 
+                    oportunidad[0].getIdOportunidadObjetivo() + ".json";
+                
+                File tempFile = new File(tempFileName);
+                File resFile = new File(resFileName);
+                
+                objectMapper.writeValue(tempFile, responseData);
+                
+                if (resFile.exists()) {
+                    if (!resFile.delete()) {
+                        throw new IOException("No se pudo eliminar el archivo de destino: " + resFileName);
+                    }
+                }
+                
+                if (tempFile.renameTo(resFile)) {
+                    System.out.println("Resultados guardados en " + resFileName);
+                } else {
+                    System.err.println("Error al renombrar el archivo temporal: " + tempFileName);
+                }
+            } catch (IOException e) {
+                System.err.println("Error saving JSON results: " + e.getMessage());
+            }
+            
+            long endTime = System.nanoTime();
+            long duration = endTime - startTime;
+            System.out.println("Execution time: " + duration / 1000000 + " ms");
+            
+            return ResponseEntity.ok(responseData);
+            
+        } catch (Exception e) {
+            System.err.println("Critical error in simulation: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        } finally {
+            // Close workbook in finally block
+            if (workbook != null) {
+                try {
+                    workbook.close();
+                } catch (IOException e) {
+                    System.err.println("Error closing workbook: " + e.getMessage());
+                }
             }
         }
-        long endTime = System.nanoTime();
-        long duration = endTime - startTime;
-        System.err.println("Execution time " + duration / 1000000 + " s");
-
-        return ResponseEntity.ok(responseData);
     }
 
     private void writeResultsToExcel(Sheet sheet) {
@@ -855,9 +905,7 @@ public class MonteCarloSimulationMultiObject {
     }
 
     private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
-
         if(percentil10 == percentil90) return percentil10;
-
         NormalDistribution normalStandard = new NormalDistribution(0, 1);
         double z90 = normalStandard.inverseCumulativeProbability(0.9);
         double mediaLog = (Math.log(percentil10) + Math.log(percentil90)) / 2;
@@ -1024,19 +1072,10 @@ public class MonteCarloSimulationMultiObject {
 
     }
 
-    // private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
-    //     // return true;
-    //     // if (objectivoIndex == 0)
-    //     // return true;
-    //     // else
-    //     // return true;
-
-    //     // return ThreadLocalRandom.current().nextDouble() <= oportunidad[objectivoIndex].getPg();
-    //     return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= getOportunidad(objectivoIndex).getPg();
-
-    // }
-
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
+        // return true;
+        // return objectivoIndex == 0 ? false : true;
+        // return objectivoIndex == 0 ? true : false;
         Oportunidad oportunidad = getOportunidad(objectivoIndex);
         if (oportunidad == null) {
             System.err.println("Warning: oportunidad[" + objectivoIndex + "] is null.");
@@ -1047,7 +1086,27 @@ public class MonteCarloSimulationMultiObject {
 
 
     private Workbook createWorkbook() {
-        return new XSSFWorkbook();
+        // Store and clear interrupted status
+        boolean wasInterrupted = Thread.interrupted();
+        
+        try {
+            // Force initialization of Log4j before creating workbook
+            try {
+                // This will initialize LogManager if it hasn't been already
+                org.apache.logging.log4j.LogManager.getLogger(MonteCarloSimulationMultiObject.class);
+            } catch (Throwable t) {
+                System.err.println("Log4j initialization warning: " + t.getMessage());
+                // Continue anyway - we've cleared the interrupt flag
+            }
+            
+            // Create the workbook - this should be safer now
+            return new XSSFWorkbook();
+        } finally {
+            // Restore interrupt status if it was set
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private void createHeaderRow(Sheet sheet, Workbook workbook) {
@@ -1082,19 +1141,6 @@ public class MonteCarloSimulationMultiObject {
 
         cell.setCellValue(value);
         cell.setCellStyle(style);
-    }
-
-    private void writeResultsToFile(Sheet sheet, Map<Integer, Object> rowData) {
-        Row row = sheet.createRow(sheet.getPhysicalNumberOfRows());
-        for (Map.Entry<Integer, Object> entry : rowData.entrySet()) {
-            Cell cell = row.createCell(entry.getKey());
-            Object value = entry.getValue();
-            if (value instanceof Number) {
-                cell.setCellValue(((Number) value).doubleValue());
-            } else if (value != null) {
-                cell.setCellValue(value.toString());
-            }
-        }
     }
 
 }
