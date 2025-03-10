@@ -23,7 +23,6 @@ public class MonteCarloDAO {
 
     private Connection getConnection() throws SQLException {
         Connection connection = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-        System.out.println("Nueva conexión creada: " + connection);
         return connection;
     }
 
