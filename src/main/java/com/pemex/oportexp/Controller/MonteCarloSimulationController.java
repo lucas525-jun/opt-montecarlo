@@ -39,12 +39,13 @@ public class MonteCarloSimulationController {
             @RequestParam("IdOportunidadObjetivo") int idOportunidadObjetivo,
             @RequestParam("IdOportunidad") int idOportunidad) {
 
-        int num = 1;
+        // if(idOportunidad != 4106) {
+        //     return null;
+        // }
         List<Map<String, Object>> multiObjetivos;
 
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
-        // if (num == 1) {
         if (multiObjetivos.size() == 1) {
             System.err.println("1 : " + multiObjetivos.get(0).get("idoportunidadobjetivo"));
             MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version,
