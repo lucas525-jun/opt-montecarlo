@@ -533,8 +533,7 @@ public class MonteCarloSimulationMultiObject {
 
         double aleatorioRecurso = 0.01
                 + (0.99 - 0.01) * randomNumbers[objectivoIndex].get(baseIndex + Indices.ALEATORIO_RECURSO);
-        // aleatorioRecurso = (objectivoIndex == 0) ? 0.647631766999635 :
-        // 0.921227551506061;
+        // aleatorioRecurso = (objectivoIndex == 1) ? 0.533433260355486 : 0;
         double recurso = calcularRecursoProspectivo(
                 aleatorioRecurso,
                 oportunidad[objectivoIndex].getPceP10(),
@@ -688,8 +687,7 @@ public class MonteCarloSimulationMultiObject {
                 HEADERS_SIZE * objectivoIndex + 5, gastoTriangular);
 
         double aleatorioDeclinacion = randomNumbers[objectivoIndex].get(baseIndex + Indices.ALEATORIO_DECLINACION);
-        // aleatorioDeclinacion = objectivoIndex == 0 ? 0.659034740341855 :
-        // 0.951330768695008;
+        // aleatorioDeclinacion = objectivoIndex == 1 ? 0.555771600060453 : 0;
         double declinacion = triangularDistribution(
                 recurso,
                 oportunidad[objectivoIndex].getPrimeraDeclinacionMin(),
@@ -1073,15 +1071,24 @@ public class MonteCarloSimulationMultiObject {
     }
 
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
-        // return true;
-        // return objectivoIndex == 0 ? false : true;
-        // return objectivoIndex == 0 ? true : false;
-        Oportunidad oportunidad = getOportunidad(objectivoIndex);
-        if (oportunidad == null) {
-            System.err.println("Warning: oportunidad[" + objectivoIndex + "] is null.");
-            return false; // or handle accordingly
+        // return false;
+        int ii = 5;
+        if(ii == 1) {
+            return true;
+        } else if(ii == 2) {
+            return objectivoIndex == 0 ? true : false;
+        } else if(ii == 3) {
+            return objectivoIndex == 0 ? false : true;
+        } else if(ii == 4) {
+            return false;
+        } else {
+            Oportunidad oportunidad = getOportunidad(objectivoIndex);
+            if (oportunidad == null) {
+                System.err.println("Warning: oportunidad[" + objectivoIndex + "] is null.");
+                return false; 
+            }
+            return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= oportunidad.getPg();
         }
-        return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= oportunidad.getPg();
     }
 
 
