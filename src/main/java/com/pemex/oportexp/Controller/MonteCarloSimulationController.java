@@ -35,25 +35,23 @@ public class MonteCarloSimulationController {
     private String genExcelPort;
 
     @GetMapping("/run")
-    public ResponseEntity<?> runSimulation(@RequestParam("Version") String version,
+    public ResponseEntity<?> runSimulation(
+            @RequestParam("Version") String version,
             @RequestParam("IdOportunidadObjetivo") int idOportunidadObjetivo,
-            @RequestParam("IdOportunidad") int idOportunidad) {
+            @RequestParam("IdOportunidad") int idOportunidad,
+            @RequestParam("evaluationType") String evaluationType,
+            @RequestParam("iterationsNumber") int iterations,
+            @RequestParam("pgValue") int pgValue) {
 
-        // if(idOportunidad != 4106) {
-        //     return null;
-        // }
         List<Map<String, Object>> multiObjetivos;
 
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
-        if (multiObjetivos.size() == 1) {
-            System.err.println("1 : " + multiObjetivos.get(0).get("idoportunidadobjetivo"));
-            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version,
-                    (int) multiObjetivos.get(0).get("idoportunidadobjetivo"));
+        if (!evaluationType.equals("opportunity")) {
+            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue);
             resultados = monteCarloSimulation.runSimulation().getBody();
 
         } else {
-            System.err.println("multi object started.");
 
             int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
 
@@ -63,7 +61,9 @@ public class MonteCarloSimulationController {
             MonteCarloSimulationMultiObject monteCarloSimulationMultiObject = monteCarloService
                     .createSimulationForMulti(
                             version,
-                            idOportunidadObjetivoArray);
+                            idOportunidadObjetivoArray, 
+                            iterations, 
+                            pgValue);
             resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
         }
         try {
@@ -104,24 +104,4 @@ public class MonteCarloSimulationController {
         }
     }
 
-    // @GetMapping("/runJson")
-    // public ResponseEntity<?> runSimulationJson(@RequestParam("Version") String
-    // version,
-    // @RequestParam("IdOportunidad") int idOportunidadObjetivo) {
-
-    // MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version,
-    // idOportunidadObjetivo);
-
-    // try {
-    // // Ejecuta la simulación y obtiene los datos
-    // List<Object> resultados = monteCarloSimulation.runSimulation().getBody();
-
-    // // Devuelve los resultados directamente
-    // return ResponseEntity.ok(resultados);
-
-    // } catch (Exception e) {
-    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-    // .body("Error en la simulación: " + e.getMessage());
-    // }
-    // }
 }

@@ -120,9 +120,6 @@ public class MonteCarloDAO {
             int actualIdVersion = 0; // Valor por defecto
             if (preparedStatementQuery.next()) {
                 actualIdVersion = preparedStatementQuery.getInt("idversion");
-                System.out.println("----------------");
-                System.out.println(actualIdVersion);
-                System.out.println("----------------");
 
             } else {
                 System.err.println("No se encontró idVersion para la versión 'VersionMontecarlos1'.");

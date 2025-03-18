@@ -27,8 +27,6 @@ public class MonteCarloSimulationMultiObject {
     private MonteCarloDAO monteCarloDAO;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    // Constants
-    private static final int DEFAULT_ITERATIONS = 3000;
     private static final int DEFAULT_NUM_VARIABLES = 19;
 
     // Configuration
@@ -37,6 +35,7 @@ public class MonteCarloSimulationMultiObject {
     private final int cantidadIteraciones;
     private final int numOportunidades;
     private final int numberOfVariables;
+    private final int pgValue;
 
     // Core simulation data
     private Oportunidad[] oportunidad;
@@ -125,12 +124,12 @@ public class MonteCarloSimulationMultiObject {
 
 
     public MonteCarloSimulationMultiObject(String version, int[] idOportunidadObjetivo, String economicEvaHost,
-            String economicEvaPort) {
+            String economicEvaPort, int iterations, int pgValue) {
         validateInputs(version, idOportunidadObjetivo);
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo.clone();
-
-        this.cantidadIteraciones = DEFAULT_ITERATIONS;
+        this.pgValue = pgValue;
+        this.cantidadIteraciones = iterations;
         this.numOportunidades = idOportunidadObjetivo.length;
         this.numberOfVariables = DEFAULT_NUM_VARIABLES;
         this.investments = new InvestmentVariables[numOportunidades];
@@ -1077,8 +1076,8 @@ public class MonteCarloSimulationMultiObject {
 
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
         // return false;
-        int ii =5;
-        if(ii == 1) {
+        int ii =2;
+        if(pgValue == 1 || ii == 1) {
             return true;
         } else if(ii == 2) {
             return objectivoIndex == 0 ? true : false;
