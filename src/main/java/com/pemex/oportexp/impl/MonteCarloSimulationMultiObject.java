@@ -27,8 +27,6 @@ public class MonteCarloSimulationMultiObject {
     private MonteCarloDAO monteCarloDAO;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    // Constants
-    private static final int DEFAULT_ITERATIONS = 3000;
     private static final int DEFAULT_NUM_VARIABLES = 19;
 
     // Configuration
@@ -37,6 +35,7 @@ public class MonteCarloSimulationMultiObject {
     private final int cantidadIteraciones;
     private final int numOportunidades;
     private final int numberOfVariables;
+    private final int pgValue;
 
     // Core simulation data
     private Oportunidad[] oportunidad;
@@ -125,12 +124,12 @@ public class MonteCarloSimulationMultiObject {
 
 
     public MonteCarloSimulationMultiObject(String version, int[] idOportunidadObjetivo, String economicEvaHost,
-            String economicEvaPort) {
+            String economicEvaPort, int iterations, int pgValue) {
         validateInputs(version, idOportunidadObjetivo);
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo.clone();
-
-        this.cantidadIteraciones = DEFAULT_ITERATIONS;
+        this.pgValue = pgValue;
+        this.cantidadIteraciones = iterations;
         this.numOportunidades = idOportunidadObjetivo.length;
         this.numberOfVariables = DEFAULT_NUM_VARIABLES;
         this.investments = new InvestmentVariables[numOportunidades];
@@ -303,8 +302,8 @@ public class MonteCarloSimulationMultiObject {
             sheet = workbook.createSheet("Simulación Monte Carlo");
             createHeaderRow(sheet, workbook);
             
-            int threadPoolSize = Runtime.getRuntime().availableProcessors();
-            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+            int threadPoolSize = Runtime.getRuntime().availableProcessors(); 
+            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize); 
             List<Future<Void>> futures = new ArrayList<>();
             
             for (int i = 0; i < cantidadIteraciones; i++) {
@@ -353,25 +352,30 @@ public class MonteCarloSimulationMultiObject {
             // Process results after all simulations are complete
             List<Double>[] reporteArray805 = new List[numOportunidades];
             List<Double> reporte804 = new ArrayList<>();
-            double kilometrajeSum = 0.0;
-            double kilometrajeCalculadoSum = 0.0;
+            int deepestObjectIndex = 0;
+            double kilometrajeOfLastObject = kilometraje[deepestObjectIndex];
+            double kilometrajeCalculado = calcularReporte804(
+                kilometrajeOfLastObject, 
+                oportunidad[deepestObjectIndex].getPlanDesarrollo(), 
+                oportunidad[deepestObjectIndex].getPg()
+            );
             
             // Calculate for each opportunity
             for (int i = 0; i < numOportunidades; i++) {
-                kilometrajeSum += kilometraje[i];
-                kilometrajeCalculadoSum += calcularReporte804(
-                    kilometraje[i], 
-                    oportunidad[i].getPlanDesarrollo(), 
-                    oportunidad[i].getPg()
-                );
+                // kilometrajeSum += kilometraje[i];
+                // kilometrajeCalculadoSum += calcularReporte804(
+                //     kilometraje[i], 
+                //     oportunidad[i].getPlanDesarrollo(), 
+                //     oportunidad[i].getPg()
+                // );
                 reporteArray805[i] = escaleraLimEconomicos(
                     limitesEconomicosRepetidos, 
                     mediaTruncada[i],
                     cantidadIteraciones
                 );
             }
-            reporte804.add(kilometrajeSum);
-            reporte804.add(kilometrajeCalculadoSum);
+            reporte804.add(kilometrajeOfLastObject);
+            reporte804.add(kilometrajeCalculado);
             
             List<Double> reporte805 = mergeReporte805(reporteArray805);
             
@@ -1072,8 +1076,8 @@ public class MonteCarloSimulationMultiObject {
 
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
         // return false;
-        int ii = 5;
-        if(ii == 1) {
+        int ii =2;
+        if(pgValue == 1 || ii == 1) {
             return true;
         } else if(ii == 2) {
             return objectivoIndex == 0 ? true : false;
