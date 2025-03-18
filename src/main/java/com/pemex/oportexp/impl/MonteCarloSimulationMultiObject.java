@@ -303,8 +303,8 @@ public class MonteCarloSimulationMultiObject {
             sheet = workbook.createSheet("Simulación Monte Carlo");
             createHeaderRow(sheet, workbook);
             
-            int threadPoolSize = Runtime.getRuntime().availableProcessors();
-            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+            int threadPoolSize = Runtime.getRuntime().availableProcessors(); 
+            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize); 
             List<Future<Void>> futures = new ArrayList<>();
             
             for (int i = 0; i < cantidadIteraciones; i++) {
@@ -353,25 +353,30 @@ public class MonteCarloSimulationMultiObject {
             // Process results after all simulations are complete
             List<Double>[] reporteArray805 = new List[numOportunidades];
             List<Double> reporte804 = new ArrayList<>();
-            double kilometrajeSum = 0.0;
-            double kilometrajeCalculadoSum = 0.0;
+            int deepestObjectIndex = 0;
+            double kilometrajeOfLastObject = kilometraje[deepestObjectIndex];
+            double kilometrajeCalculado = calcularReporte804(
+                kilometrajeOfLastObject, 
+                oportunidad[deepestObjectIndex].getPlanDesarrollo(), 
+                oportunidad[deepestObjectIndex].getPg()
+            );
             
             // Calculate for each opportunity
             for (int i = 0; i < numOportunidades; i++) {
-                kilometrajeSum += kilometraje[i];
-                kilometrajeCalculadoSum += calcularReporte804(
-                    kilometraje[i], 
-                    oportunidad[i].getPlanDesarrollo(), 
-                    oportunidad[i].getPg()
-                );
+                // kilometrajeSum += kilometraje[i];
+                // kilometrajeCalculadoSum += calcularReporte804(
+                //     kilometraje[i], 
+                //     oportunidad[i].getPlanDesarrollo(), 
+                //     oportunidad[i].getPg()
+                // );
                 reporteArray805[i] = escaleraLimEconomicos(
                     limitesEconomicosRepetidos, 
                     mediaTruncada[i],
                     cantidadIteraciones
                 );
             }
-            reporte804.add(kilometrajeSum);
-            reporte804.add(kilometrajeCalculadoSum);
+            reporte804.add(kilometrajeOfLastObject);
+            reporte804.add(kilometrajeCalculado);
             
             List<Double> reporte805 = mergeReporte805(reporteArray805);
             
@@ -1072,7 +1077,7 @@ public class MonteCarloSimulationMultiObject {
 
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
         // return false;
-        int ii = 5;
+        int ii =5;
         if(ii == 1) {
             return true;
         } else if(ii == 2) {
