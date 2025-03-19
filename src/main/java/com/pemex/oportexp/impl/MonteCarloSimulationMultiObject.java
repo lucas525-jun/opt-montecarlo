@@ -386,7 +386,7 @@ public class MonteCarloSimulationMultiObject {
             
             // Save workbook to file
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "MonteCarloSimulationMultiObject" + oportunidad[0].getIdOportunidadObjetivo() + ".xlsx")) {
+                    "MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad()  + "_" + cantidadIteraciones + ".xlsx")) {
                 workbook.write(fileOut);
             } catch (IOException e) {
                 System.err.println("Error writing Excel file: " + e.getMessage());
@@ -485,9 +485,7 @@ public class MonteCarloSimulationMultiObject {
         }
 
         try {
-            String excelNum = oportunidad[objectivoIndex].getOportunidad()
-                    + oportunidad[objectivoIndex].getIdOportunidadObjetivo() + "_" + (iterationNumber + 1);
-
+            int excelNum = iterationNumber + 1;
             excelRowData.put(HEADERS_SIZE * objectivoIndex, excelNum);
 
             if (pruebaGeologica(objectivoIndex, iterationNumber)) {
@@ -1130,5 +1128,6 @@ public class MonteCarloSimulationMultiObject {
         cell.setCellValue(value);
         cell.setCellStyle(style);
     }
+    
 
 }
