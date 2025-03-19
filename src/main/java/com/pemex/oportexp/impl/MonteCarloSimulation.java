@@ -28,6 +28,8 @@ public class MonteCarloSimulation {
     private String economicEvaHost;
     private String economicEvaPort;
     private final String version;
+    private final int iterations;
+    private final int pgValue;
     private final int idOportunidadObjetivo;
     private Oportunidad oportunidad;
     private final ThreadLocalRandom random = ThreadLocalRandom.current();
@@ -40,9 +42,11 @@ public class MonteCarloSimulation {
         this.oportunidad = oportunidad;
     }
 
-    public MonteCarloSimulation(String version, int idOportunidadObjetivo) {
+    public MonteCarloSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue) {
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
+        this.iterations = iterations;
+        this.pgValue = pgValue;
     }
 
     public void setEconomicEvaHostAndPort(String host, String port) {
@@ -60,7 +64,7 @@ public class MonteCarloSimulation {
         Oportunidad oportunidad = monteCarloDAO.executeQuery(version, idOportunidadObjetivo);
         setOportunidad(oportunidad);
 
-        int cantidadIteraciones = 3000;
+        int cantidadIteraciones = iterations;
 
         int indexAleatorioRecurso = 0;
         int indexAleatorioGasto = 1;
@@ -530,7 +534,11 @@ public class MonteCarloSimulation {
     }
 
     private boolean pruebaGeologica() {
-        return random.nextDouble() <= oportunidad.getPg();
+        if(pgValue == 1) {
+            return true;
+        } else {
+            return random.nextDouble() <= oportunidad.getPg();
+        }
     }
 
     private double calcularRecursoProspectivo(double aleatorio, double percentil10, double percentil90) {
@@ -666,46 +674,6 @@ public class MonteCarloSimulation {
         }
         return gmp;
 
-    }
-
-    private int EncuentraOCreaColumna(Row headerRow, int year) {
-        // Buscar si el año ya existe en alguna celda del encabezado
-        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
-            Cell cell = headerRow.getCell(i);
-            if (cell != null && cell.getCellType() == CellType.NUMERIC && cell.getNumericCellValue() == year) {
-                return i; // Retornar el índice de la columna existente
-            }
-        }
-
-        // Si no se encuentra, crear una nueva columna
-        int newColumnIndex = headerRow.getPhysicalNumberOfCells(); // Usa las celdas físicas ocupadas
-        Cell newCell = headerRow.createCell(newColumnIndex);
-        newCell.setCellValue(year);
-        return newColumnIndex;
-    }
-
-    private void OrdenaEncabezado(Row headerRow) {
-        if (headerRow == null) {
-            // System.out.println("La fila del encabezado no existe.");
-            return;
-        }
-        // Recopilar años y sus índices originales desde la columna U (índice 21)
-        List<Map.Entry<Integer, Integer>> yearIndexPairs = new ArrayList<>();
-        for (int i = 20; i < headerRow.getLastCellNum(); i++) {
-            Cell cell = headerRow.getCell(i);
-            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
-                yearIndexPairs.add(new AbstractMap.SimpleEntry<>((int) cell.getNumericCellValue(), i));
-            }
-        }
-
-        // Ordenar los pares por el valor del año
-        yearIndexPairs.sort(Comparator.comparingInt(Map.Entry::getKey));
-
-        // Reorganizar las celdas de encabezado en el orden correcto
-        for (int i = 0; i < yearIndexPairs.size(); i++) {
-            int year = yearIndexPairs.get(i).getKey();
-            headerRow.getCell(20 + i).setCellValue(year); // Reasignar los años ordenados desde la columna K
-        }
     }
 
     private void writeResultsToExcel(Sheet sheet, Map<Integer, Object> rowData) {
