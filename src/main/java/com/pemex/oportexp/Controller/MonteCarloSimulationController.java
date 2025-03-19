@@ -1,6 +1,5 @@
 package com.pemex.oportexp.Controller;
 
-import com.pemex.oportexp.Services.ExcelService;
 import com.pemex.oportexp.Services.MonteCarloService;
 import com.pemex.oportexp.impl.MonteCarloSimulation;
 import com.pemex.oportexp.impl.MonteCarloSimulationMultiObject;
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import com.pemex.oportexp.impl.MonteCarloDAO;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 

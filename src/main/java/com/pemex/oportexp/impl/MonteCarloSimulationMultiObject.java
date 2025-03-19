@@ -362,12 +362,6 @@ public class MonteCarloSimulationMultiObject {
             
             // Calculate for each opportunity
             for (int i = 0; i < numOportunidades; i++) {
-                // kilometrajeSum += kilometraje[i];
-                // kilometrajeCalculadoSum += calcularReporte804(
-                //     kilometraje[i], 
-                //     oportunidad[i].getPlanDesarrollo(), 
-                //     oportunidad[i].getPg()
-                // );
                 reporteArray805[i] = escaleraLimEconomicos(
                     limitesEconomicosRepetidos, 
                     mediaTruncada[i],
@@ -475,18 +469,6 @@ public class MonteCarloSimulationMultiObject {
         }
     }
 
-    // public static double mergeReporte804(double[][] reporteArray804) {
-    //     double sum = 0.0;
-    //     List<Double> reporte804 = new ArrayList<>();
-    //     for (int i = 0; i < numOportunidades; i++) {
-    //         for (double value : reporteArray804[i]) {
-    //             sum += value;
-    //         }
-    //     }
-    //     return sum / reporteArray804.length; 
-    // }
-
-    // Flatten the List<Double>[] into a single List<Double>
     public static List<Double> mergeReporte805(List<Double>[] reporteArray805) {
         List<Double> mergedList = new ArrayList<>();
         for (List<Double> list : reporteArray805) {
@@ -1101,19 +1083,14 @@ public class MonteCarloSimulationMultiObject {
         boolean wasInterrupted = Thread.interrupted();
         
         try {
-            // Force initialization of Log4j before creating workbook
             try {
-                // This will initialize LogManager if it hasn't been already
                 org.apache.logging.log4j.LogManager.getLogger(MonteCarloSimulationMultiObject.class);
             } catch (Throwable t) {
                 System.err.println("Log4j initialization warning: " + t.getMessage());
-                // Continue anyway - we've cleared the interrupt flag
             }
             
-            // Create the workbook - this should be safer now
             return new XSSFWorkbook();
         } finally {
-            // Restore interrupt status if it was set
             if (wasInterrupted) {
                 Thread.currentThread().interrupt();
             }

@@ -676,46 +676,6 @@ public class MonteCarloSimulation {
 
     }
 
-    private int EncuentraOCreaColumna(Row headerRow, int year) {
-        // Buscar si el año ya existe en alguna celda del encabezado
-        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
-            Cell cell = headerRow.getCell(i);
-            if (cell != null && cell.getCellType() == CellType.NUMERIC && cell.getNumericCellValue() == year) {
-                return i; // Retornar el índice de la columna existente
-            }
-        }
-
-        // Si no se encuentra, crear una nueva columna
-        int newColumnIndex = headerRow.getPhysicalNumberOfCells(); // Usa las celdas físicas ocupadas
-        Cell newCell = headerRow.createCell(newColumnIndex);
-        newCell.setCellValue(year);
-        return newColumnIndex;
-    }
-
-    private void OrdenaEncabezado(Row headerRow) {
-        if (headerRow == null) {
-            // System.out.println("La fila del encabezado no existe.");
-            return;
-        }
-        // Recopilar años y sus índices originales desde la columna U (índice 21)
-        List<Map.Entry<Integer, Integer>> yearIndexPairs = new ArrayList<>();
-        for (int i = 20; i < headerRow.getLastCellNum(); i++) {
-            Cell cell = headerRow.getCell(i);
-            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
-                yearIndexPairs.add(new AbstractMap.SimpleEntry<>((int) cell.getNumericCellValue(), i));
-            }
-        }
-
-        // Ordenar los pares por el valor del año
-        yearIndexPairs.sort(Comparator.comparingInt(Map.Entry::getKey));
-
-        // Reorganizar las celdas de encabezado en el orden correcto
-        for (int i = 0; i < yearIndexPairs.size(); i++) {
-            int year = yearIndexPairs.get(i).getKey();
-            headerRow.getCell(20 + i).setCellValue(year); // Reasignar los años ordenados desde la columna K
-        }
-    }
-
     private void writeResultsToExcel(Sheet sheet, Map<Integer, Object> rowData) {
         Row row = sheet.createRow(sheet.getPhysicalNumberOfRows());
         rowData.forEach((colIndex, value) -> {
