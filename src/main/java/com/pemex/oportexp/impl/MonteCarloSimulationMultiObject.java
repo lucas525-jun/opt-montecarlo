@@ -446,19 +446,16 @@ public class MonteCarloSimulationMultiObject {
             
             // Save montecarlo workbook to file
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad()  + "_" + cantidadIteraciones + "_" + now.format(formatter) + ".xlsx")) {
+                    "MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                 workbook.write(fileOut);
-                System.out.println("montecarlo excel success");
 
             } catch (IOException e) {
                 System.err.println("Error writing Excel file: " + e.getMessage());
             }
             
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "Production_" + oportunidad[0].getOportunidad()  + "_" + cantidadIteraciones + "_" + now.format(formatter) + ".xlsx")) {
+                    "Production_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                         productionWorkbook.write(fileOut);
-
-                System.out.println("production excel success");
 
             } catch (IOException e) {
                 System.err.println("Error writing Excel file: " + e.getMessage());
