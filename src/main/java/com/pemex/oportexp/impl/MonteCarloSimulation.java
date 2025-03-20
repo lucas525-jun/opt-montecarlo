@@ -574,7 +574,7 @@ public class MonteCarloSimulation {
         // Guardar resultados en el archivo Excel
         try (
                 FileOutputStream fileOut = new FileOutputStream(
-                        "SimulacionMonteCarlo_" + oportunidad.getOportunidad() + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                        "SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
             workbook.write(fileOut);
         } catch (IOException e) {
             e.printStackTrace();
@@ -589,7 +589,7 @@ public class MonteCarloSimulation {
         //save production excel
         
         try (FileOutputStream fileOut = new FileOutputStream(
-                "Production_" + oportunidad.getOportunidad()  + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                "Perfiles de producción_" + oportunidad.getOportunidad()  + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
                     productionWorkbook.write(fileOut);
 
         } catch (IOException e) {
