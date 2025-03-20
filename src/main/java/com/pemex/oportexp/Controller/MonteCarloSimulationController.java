@@ -50,7 +50,6 @@ public class MonteCarloSimulationController {
             resultados = monteCarloSimulation.runSimulation().getBody();
 
         } else {
-
             int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
 
             for (int i = 0; i < multiObjetivos.size(); i++) {

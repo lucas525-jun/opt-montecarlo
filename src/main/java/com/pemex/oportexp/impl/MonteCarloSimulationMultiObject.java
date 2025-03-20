@@ -15,6 +15,9 @@ import org.springframework.web.client.RestTemplate;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +31,12 @@ public class MonteCarloSimulationMultiObject {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private static final int DEFAULT_NUM_VARIABLES = 19;
+
+    private final AtomicReference<Double> grandTotalPCE = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> grandTotalAceite = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> grandTotalGas = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> grandTotalCondensado = new AtomicReference<>(0.0);
+
 
     // Configuration
     private final String version;
@@ -64,8 +73,8 @@ public class MonteCarloSimulationMultiObject {
 
     List<Object> responseData = Collections.synchronizedList(new ArrayList<>());
 
-    private final ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters>> simulationParametersMatrix = new ConcurrentHashMap<>();
     private SimulacionMicrosMulti simulacionMicrosMulti;
+    private final ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters>> simulationParametersMatrix = new ConcurrentHashMap<>();
 
     // Excel headers
     private final String[] headers = {
@@ -179,15 +188,17 @@ public class MonteCarloSimulationMultiObject {
         this.fracasos = new int[numOportunidades];
         this.mediaTruncada = new double[numOportunidades];
         this.kilometraje = new double[numOportunidades];
-        this.randomNumbers = new ArrayList[numOportunidades];
+        this.randomNumbers = new CopyOnWriteArrayList[numOportunidades];
         this.precomputedRandomNumbers = new double[numOportunidades][cantidadIteraciones];
 
 
         for (int i = 0; i < numOportunidades; i++) {
-            this.randomNumbers[i] = IntStream.range(0, cantidadIteraciones * numberOfVariables)
+            this.randomNumbers[i] = new CopyOnWriteArrayList<>(
+                IntStream.range(0, cantidadIteraciones * numberOfVariables)
                     .mapToDouble(j -> ThreadLocalRandom.current().nextDouble())
                     .boxed()
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList())
+            );
             for (int j = 0; j < cantidadIteraciones; j++) {
                 precomputedRandomNumbers[i][j] = ThreadLocalRandom.current().nextDouble();
             }
@@ -289,15 +300,58 @@ public class MonteCarloSimulationMultiObject {
 
     public ResponseEntity<List<Object>> runSimulation() {
        
-        long startTime = System.nanoTime();
         iterationNumber.set(1);
         
         // Create workbook and sheet ONCE before starting threads
         Workbook workbook = null;
+        Workbook productionWorkbook = null;
         Sheet sheet = null;
         
         try {
-            // Initialize workbook before any threading
+
+            productionWorkbook = new XSSFWorkbook();
+            Sheet pceSheet = productionWorkbook.createSheet("PCE");
+            Sheet aceiteSheet = productionWorkbook.createSheet("Aceite");
+            Sheet gasSheet = productionWorkbook.createSheet("Gas");
+            Sheet condensadoSheet = productionWorkbook.createSheet("Condensado");
+
+            Font font = productionWorkbook.createFont();
+            font.setFontHeightInPoints((short) 16); 
+            font.setBold(true); 
+            CellStyle titleStyle = productionWorkbook.createCellStyle();
+            titleStyle.setFont(font);
+
+            String[] years = IntStream.rangeClosed(2025, 2120).mapToObj(String::valueOf).toArray(String[]::new);
+
+            createSheetHeaders(pceSheet, years, productionWorkbook);
+            createSheetHeaders(aceiteSheet, years, productionWorkbook);
+            createSheetHeaders(gasSheet, years, productionWorkbook);
+            createSheetHeaders(condensadoSheet, years, productionWorkbook);
+
+            Row titleRowOfPce = pceSheet.createRow(0);
+            titleRowOfPce.setHeight((short) 600);
+            Cell titleCellOfPce = titleRowOfPce.createCell(2);
+            titleCellOfPce.setCellValue("Producción diaria promedio de Petróleo Crudo Equivalente (mbpced)");
+            titleCellOfPce.setCellStyle(titleStyle);
+
+            Row titleRowOfAceite = aceiteSheet.createRow(0);
+            titleRowOfAceite.setHeight((short) 600);
+            Cell titleCellOfAceite = titleRowOfAceite.createCell(2);
+            titleCellOfAceite.setCellValue("Producción diaria promedio de Aceite (mbd)");
+            titleCellOfAceite.setCellStyle(titleStyle);
+
+            Row titleRowOfGas = gasSheet.createRow(0);
+            titleRowOfGas.setHeight((short) 600);
+            Cell titleCellOfGas = titleRowOfGas.createCell(2);
+            titleCellOfGas.setCellValue("Producción diaria promedio de Gas (mmpcd)");
+            titleCellOfGas.setCellStyle(titleStyle);
+
+            Row titleRowOfCondensado = condensadoSheet.createRow(0);
+            titleRowOfCondensado.setHeight((short) 600);
+            Cell titleCellOfCondensado = titleRowOfCondensado.createCell(2);
+            titleCellOfCondensado.setCellValue("Producción diaria promedio de Condensado (mbd)");
+            titleCellOfCondensado.setCellStyle(titleStyle);
+
             workbook = createWorkbook();
             sheet = workbook.createSheet("Simulación Monte Carlo");
             createHeaderRow(sheet, workbook);
@@ -308,20 +362,21 @@ public class MonteCarloSimulationMultiObject {
             
             for (int i = 0; i < cantidadIteraciones; i++) {
                 int finalI = i;
+
                 futures.add(executor.submit(() -> {
                     Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
                     excelRowBuffers.put(finalI, excelRowData);
-                    
+                   
                     ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = 
                         simulationParametersMatrix.get(finalI);
                     
-                    simulateOpportunityRecursively(0, finalI, excelRowData);
-                    
+                    simulateOpportunities(finalI, excelRowData);
                     if (paramsArray != null) {
                         resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
                         synchronized (resultadosQueue) {
                             resultadosQueue.add(resultados[finalI]);
                         }
+                        writeDataToSheets(resultados[finalI], pceSheet, aceiteSheet, gasSheet, condensadoSheet, years, finalI+2);
                     } else {
                         System.err.println("No simulation parameters found for iteration " + finalI);
                     }
@@ -329,7 +384,6 @@ public class MonteCarloSimulationMultiObject {
                 }));
             }
             
-            // Wait for all futures to complete
             for (Future<Void> future : futures) {
                 try {
                     future.get();
@@ -338,7 +392,6 @@ public class MonteCarloSimulationMultiObject {
                 }
             }
             
-            // Proper executor shutdown with timeout
             try {
                 executor.shutdown();
                 if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -348,6 +401,12 @@ public class MonteCarloSimulationMultiObject {
                 executor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+
+            writeToSheet(pceSheet, 0, 1, grandTotalPCE.get() / cantidadIteraciones);
+            writeToSheet(aceiteSheet, 0, 1, grandTotalAceite.get() / cantidadIteraciones);
+            writeToSheet(gasSheet, 0, 1, grandTotalGas.get() / cantidadIteraciones);
+            writeToSheet(condensadoSheet, 0, 1, grandTotalCondensado.get() / cantidadIteraciones);
+            
             
             // Process results after all simulations are complete
             List<Double>[] reporteArray805 = new List[numOportunidades];
@@ -381,13 +440,26 @@ public class MonteCarloSimulationMultiObject {
                 primerElemento.put("reporte805", reporte805);
             }
             
-            // Write results to Excel only after all processing is complete
             writeResultsToExcel(sheet);
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMdd_HHmm");
             
-            // Save workbook to file
+            // Save montecarlo workbook to file
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "MonteCarloSimulationMultiObject" + oportunidad[0].getIdOportunidadObjetivo() + ".xlsx")) {
+                    "MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad()  + "_" + cantidadIteraciones + "_" + now.format(formatter) + ".xlsx")) {
                 workbook.write(fileOut);
+                System.out.println("montecarlo excel success");
+
+            } catch (IOException e) {
+                System.err.println("Error writing Excel file: " + e.getMessage());
+            }
+            
+            try (FileOutputStream fileOut = new FileOutputStream(
+                    "Production_" + oportunidad[0].getOportunidad()  + "_" + cantidadIteraciones + "_" + now.format(formatter) + ".xlsx")) {
+                        productionWorkbook.write(fileOut);
+
+                System.out.println("production excel success");
+
             } catch (IOException e) {
                 System.err.println("Error writing Excel file: " + e.getMessage());
             }
@@ -422,9 +494,6 @@ public class MonteCarloSimulationMultiObject {
                 System.err.println("Error saving JSON results: " + e.getMessage());
             }
             
-            long endTime = System.nanoTime();
-            long duration = endTime - startTime;
-            System.out.println("Execution time: " + duration / 1000000 + " ms");
             
             return ResponseEntity.ok(responseData);
             
@@ -444,19 +513,142 @@ public class MonteCarloSimulationMultiObject {
         }
     }
 
-    private void writeResultsToExcel(Sheet sheet) {
-        int rowIndex = 1; // Start from row 1 because row 0 is reserved for headers
+    private void writeToSheet(Sheet sheet, int rowCounter, int columnIndex, double value) {
+        Row row = sheet.getRow(rowCounter);
+        if (row == null) {
+            row = sheet.createRow(rowCounter);
+        }
+        Cell cell = row.createCell(columnIndex);
+        cell.setCellValue(value);
+    }
 
-        for (Map.Entry<Integer, Map<Integer, Object>> entry : excelRowBuffers.entrySet()) {
+    private void writeDataToSheets(Object resultado, Sheet pceSheet, Sheet aceiteSheet, Sheet gasSheet, Sheet condensadoSheet, String[] years, int iterationNumber) {
+        double totalPCEVal = 0.0;
+        double totalAceiteVal = 0.0;
+        double totalGasVal = 0.0;
+        double totalCondensadoVal = 0.0;
+        if (resultado instanceof Map) {
+            Map<String, Object> resultMap = (Map<String, Object>) resultado;
+            List<Map<String, Object>> evaluacionEconomica = (List<Map<String, Object>>) resultMap.get("evaluacionEconomica");
+            synchronized (pceSheet) {
+                writeToSheet(pceSheet, iterationNumber, 0, iterationNumber - 1); 
+            }
+
+            synchronized (aceiteSheet) {
+                writeToSheet(aceiteSheet, iterationNumber, 0, iterationNumber - 1); 
+            }
+
+            synchronized (gasSheet) {
+                writeToSheet(gasSheet, iterationNumber, 0, iterationNumber - 1); 
+            }
+
+            synchronized (condensadoSheet) {
+                writeToSheet(condensadoSheet, iterationNumber, 0, iterationNumber - 1); 
+            }
+            for (Map<String, Object> evaluacion : evaluacionEconomica) {
+                String anio = (String) evaluacion.get("anio");
+                Map<String, Object> produccionDiariaPromedio = (Map<String, Object>) evaluacion.get("produccionDiariaPromedio");
+                
+                if (produccionDiariaPromedio != null) {
+                    double mbpce = produccionDiariaPromedio.get("mbpce") != null ? ((Number) produccionDiariaPromedio.get("mbpce")).doubleValue() : 0.0;
+                    double aceiteTotal = produccionDiariaPromedio.get("aceiteTotal") != null ? ((Number) produccionDiariaPromedio.get("aceiteTotal")).doubleValue() : 0.0;
+                    double gasTotal = produccionDiariaPromedio.get("gasTotal") != null ? ((Number) produccionDiariaPromedio.get("gasTotal")).doubleValue() : 0.0;
+                    double condensado = produccionDiariaPromedio.get("condensado") != null ? ((Number) produccionDiariaPromedio.get("condensado")).doubleValue() : 0.0;
+
+                    totalPCEVal+= mbpce;
+                    totalAceiteVal+= aceiteTotal;
+                    totalGasVal+= gasTotal;
+                    totalCondensadoVal+= condensado;
+
+                    int yearIndex = Arrays.asList(years).indexOf(anio);
+                    if (yearIndex != -1) {
+                        
+                        synchronized (pceSheet) {
+                            writeToSheet(pceSheet, iterationNumber, yearIndex + 2, mbpce); 
+                        }
+
+                        synchronized (aceiteSheet) {
+                            writeToSheet(aceiteSheet, iterationNumber, yearIndex + 2, aceiteTotal);
+                        }
+
+                        synchronized (gasSheet) {
+                            writeToSheet(gasSheet, iterationNumber, yearIndex + 2, gasTotal);
+                        }
+
+                        synchronized (condensadoSheet) {
+                            writeToSheet(condensadoSheet, iterationNumber, yearIndex + 2, condensado);
+                        }
+                    }
+                }
+            }
+            final double finalTotalPCEVal = totalPCEVal;
+            final double finalTotalAceiteVal = totalAceiteVal;
+            final double finalTotalGasVal = totalGasVal;
+            final double finalTotalCondensadoVal = totalCondensadoVal;
+
+            grandTotalPCE.updateAndGet(currentTotal -> currentTotal + finalTotalPCEVal);
+            grandTotalAceite.updateAndGet(currentTotal -> currentTotal + finalTotalAceiteVal);
+            grandTotalGas.updateAndGet(currentTotal -> currentTotal + finalTotalGasVal);
+            grandTotalCondensado.updateAndGet(currentTotal -> currentTotal + finalTotalCondensadoVal);
+
+            synchronized (pceSheet) {
+                writeToSheet(pceSheet, iterationNumber, 1, totalPCEVal); 
+            }
+            
+            synchronized (aceiteSheet) {
+                writeToSheet(aceiteSheet, iterationNumber, 1, totalAceiteVal); 
+            }
+            synchronized (gasSheet) {
+                writeToSheet(gasSheet, iterationNumber, 1, totalGasVal); 
+            }
+            synchronized (condensadoSheet) {
+                writeToSheet(condensadoSheet, iterationNumber, 1, totalCondensadoVal); 
+            }
+
+        }
+    }
+
+    private void createSheetHeaders(Sheet sheet, String[] years, Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        // style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+
+        Row headerRow = sheet.createRow(1);
+        Cell cellIteration = headerRow.createCell(0);
+        cellIteration.setCellStyle(style);
+        cellIteration.setCellValue("Iteración");
+        Cell cellTotal = headerRow.createCell(1);
+        cellTotal.setCellStyle(style);
+        cellTotal.setCellValue("Total");
+        for (int i = 0; i < years.length; i++) {
+            Cell cell = headerRow.createCell(i + 2);
+            cell.setCellValue(years[i]);
+            cell.setCellStyle(style);
+        }
+    }
+
+    private void writeResultsToExcel(Sheet sheet) {
+        Map<Integer, Map<Integer, Object>> buffersCopy = new HashMap<>(excelRowBuffers);
+        
+        int rowIndex = 1;
+        
+        for (Map.Entry<Integer, Map<Integer, Object>> entry : buffersCopy.entrySet()) {
             Map<Integer, Object> buffer = entry.getValue();
             if (buffer != null) {
                 Row row = sheet.createRow(rowIndex++);
-                for (Map.Entry<Integer, Object> cellEntry : buffer.entrySet()) {
+                // Create a copy of the buffer to avoid concurrent modification
+                Map<Integer, Object> bufferData = new HashMap<>(buffer);
+                for (Map.Entry<Integer, Object> cellEntry : bufferData.entrySet()) {
                     int columnIndex = cellEntry.getKey();
                     Object cellData = cellEntry.getValue();
-
+                    
                     Cell cell = row.createCell(columnIndex);
-
+                    
                     if (cellData instanceof Number) {
                         cell.setCellValue(((Number) cellData).doubleValue());
                     } else if (cellData instanceof String) {
@@ -477,37 +669,36 @@ public class MonteCarloSimulationMultiObject {
         return mergedList;
     }
 
-    // New method to encapsulate single opportunity simulation
-    private void simulateOpportunityRecursively(int objectivoIndex, int iterationNumber,
-            Map<Integer, Object> excelRowData) {
-        if (objectivoIndex >= numOportunidades) {
-            return;
-        }
-
-        try {
-            String excelNum = oportunidad[objectivoIndex].getOportunidad()
-                    + oportunidad[objectivoIndex].getIdOportunidadObjetivo() + "_" + (iterationNumber + 1);
-
-            excelRowData.put(HEADERS_SIZE * objectivoIndex, excelNum);
-
-            if (pruebaGeologica(objectivoIndex, iterationNumber)) {
-                handleSuccessfulSimulation(objectivoIndex, excelRowData, iterationNumber);
-            } else {
-                handleFailedSimulation(objectivoIndex, excelRowData, iterationNumber);
+    private void simulateOpportunities(int iterationNumber, Map<Integer, Object> excelRowData) {
+        for (int objectivoIndex = 0; objectivoIndex < numOportunidades; objectivoIndex++) {
+            try {
+                int excelNum = iterationNumber + 1;
+                excelRowData.put(HEADERS_SIZE * objectivoIndex, excelNum);
+                if (pruebaGeologica(objectivoIndex, iterationNumber)) {
+                    handleSuccessfulSimulation(objectivoIndex, excelRowData, iterationNumber);
+                } else {
+                    handleFailedSimulation(objectivoIndex, excelRowData, iterationNumber);
+                }
+            } catch (Exception e) {
+                System.err.println("Error in simulation iteration for objective " + objectivoIndex + 
+                                  " (iteration " + iterationNumber + "): " + e.getMessage());
+                e.printStackTrace();
+                excelRowData.put(HEADERS_SIZE * objectivoIndex + 1, "Error: " + e.getMessage());
             }
-            excelRowBuffers.put(iterationNumber, excelRowData);
-
-        } catch (Exception e) {
-            System.err.println("Error in simulation iteration : " + e.getMessage());
-            throw e;
-        } finally {
-
         }
+        
+        // Always store the row data, even if some objectives failed
+        excelRowBuffers.put(iterationNumber, excelRowData);
     }
 
     private Oportunidad getOportunidad(int index) {
-        return oportunidadRef.get()[index];
+        Oportunidad[] ops = oportunidadRef.get();
+        if (ops == null || index < 0 || index >= ops.length) {
+            return null;
+        }
+        return ops[index];
     }
+    
 
     private void handleSuccessfulSimulation(int objectivoIndex, Map<Integer, Object> excelRowData,
             int iterationNumber) {
@@ -531,7 +722,6 @@ public class MonteCarloSimulationMultiObject {
         calculateAndStoreSimulationResults(objectivoIndex, baseIndex, recurso, aleatorioRecurso, excelRowData);
 
         executeSimulationMicroservices(objectivoIndex, excelRowData, iterationNumber);
-        simulateOpportunityRecursively(objectivoIndex + 1, iterationNumber, excelRowData);
     }
 
     private void handleFailedSimulation(int objectivoIndex, Map<Integer, Object> excelRowData, int iterationNumber) {
@@ -544,7 +734,6 @@ public class MonteCarloSimulationMultiObject {
         limitesEconomicosRepetidos.merge(0.0, 1, Integer::sum);
         updateExploratoryValues(objectivoIndex, excelRowData);
         executeSimulationMicroservices(objectivoIndex, excelRowData, iterationNumber);
-        simulateOpportunityRecursively(objectivoIndex + 1, iterationNumber, excelRowData);
 
     }
 
@@ -627,12 +816,11 @@ public class MonteCarloSimulationMultiObject {
             params.setTriangularInversionBuqueTanqueRenta(0);
         }
 
-        simulationParametersMatrix.compute(iterationNumber, (key, value) -> {
-            if (value == null)
-                value = new ConcurrentHashMap<>();
-            value.put(objectivoIndex, params);
-            return value;
-        });
+        ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap;
+        synchronized (simulationParametersMatrix) {
+            paramsMap = simulationParametersMatrix.computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>());
+            paramsMap.put(objectivoIndex, params);
+        }
 
     }
 
@@ -1057,21 +1245,13 @@ public class MonteCarloSimulationMultiObject {
     }
 
     private boolean pruebaGeologica(int objectivoIndex, int iterationNumber) {
-        // return false;
-        int ii =2;
-        if(pgValue == 1 || ii == 1) {
+        if (pgValue == 1) {
             return true;
-        } else if(ii == 2) {
-            return objectivoIndex == 0 ? true : false;
-        } else if(ii == 3) {
-            return objectivoIndex == 0 ? false : true;
-        } else if(ii == 4) {
-            return false;
         } else {
             Oportunidad oportunidad = getOportunidad(objectivoIndex);
             if (oportunidad == null) {
                 System.err.println("Warning: oportunidad[" + objectivoIndex + "] is null.");
-                return false; 
+                return false;
             }
             return precomputedRandomNumbers[objectivoIndex][iterationNumber] <= oportunidad.getPg();
         }
@@ -1130,5 +1310,6 @@ public class MonteCarloSimulationMultiObject {
         cell.setCellValue(value);
         cell.setCellStyle(style);
     }
+    
 
 }
