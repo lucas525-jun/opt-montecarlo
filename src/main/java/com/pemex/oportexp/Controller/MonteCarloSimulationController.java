@@ -42,16 +42,13 @@ public class MonteCarloSimulationController {
             @RequestParam("pgValue") int pgValue) {
 
         List<Map<String, Object>> multiObjetivos;
-
+        // if(idOportunidad != 4188)
+        //     return null;
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
-        if (!evaluationType.equals("opportunity")) {
-            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue);
-            resultados = monteCarloSimulation.runSimulation().getBody();
-
-        } else {
+        if (evaluationType.equals("opportunity") && multiObjetivos.size() > 1) {
+            System.err.println("Multi object started.");
             int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
-
             for (int i = 0; i < multiObjetivos.size(); i++) {
                 idOportunidadObjetivoArray[i] = (int) multiObjetivos.get(i).get("idoportunidadobjetivo");
             }
@@ -62,6 +59,10 @@ public class MonteCarloSimulationController {
                             iterations, 
                             pgValue);
             resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
+        } else {
+            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue);
+            resultados = monteCarloSimulation.runSimulation().getBody();
+
         }
         try {
             String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort + "/generate-excel";
