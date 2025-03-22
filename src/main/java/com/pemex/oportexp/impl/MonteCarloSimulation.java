@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.Comparator;
 
 public class MonteCarloSimulation {
     @Setter
@@ -36,6 +35,7 @@ public class MonteCarloSimulation {
     private final int iterations;
     private final int pgValue;
     private final int idOportunidadObjetivo;
+    private final String evaluationId;
     private Oportunidad oportunidad;
     private final ThreadLocalRandom random = ThreadLocalRandom.current();
 
@@ -49,11 +49,12 @@ public class MonteCarloSimulation {
         this.oportunidad = oportunidad;
     }
 
-    public MonteCarloSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue) {
+    public MonteCarloSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue, String evaluationId) {
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
         this.iterations = iterations;
         this.pgValue = pgValue;
+        this.evaluationId = evaluationId;
     }
 
     public void setEconomicEvaHostAndPort(String host, String port) {
@@ -119,7 +120,7 @@ public class MonteCarloSimulation {
         CellStyle titleStyle = productionWorkbook.createCellStyle();
         titleStyle.setFont(font);
 
-        String[] years = IntStream.rangeClosed(2025, 2120).mapToObj(String::valueOf).toArray(String[]::new);
+        String[] years = IntStream.rangeClosed(2024, 2120).mapToObj(String::valueOf).toArray(String[]::new);
 
         createSheetHeaders(pceSheet, years, productionWorkbook);
         createSheetHeaders(aceiteSheet, years, productionWorkbook);
@@ -545,36 +546,10 @@ public class MonteCarloSimulation {
 
         excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            String tempFileName = "resultados_temp_" + idOportunidadObjetivo + ".json";
-            String resFileName = "resultados_" + idOportunidadObjetivo + ".json";
-
-            File tempFile = new File(tempFileName);
-            File resFile = new File(resFileName);
-            objectMapper.writeValue(tempFile, resultados);
-
-            if (resFile.exists()) {
-                if (!resFile.delete()) {
-                    throw new IOException("No se pudo eliminar el archivo de destino: " + resFileName);
-                }
-            }
-
-            if (tempFile.renameTo(resFile)) {
-                System.out.println("Resultados guardados en " + resFileName);
-            } else {
-                System.err.println("Error al renombrar el archivo temporal: " + tempFileName);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMdd_HHmm");
         // Guardar resultados en el archivo Excel
         try (
                 FileOutputStream fileOut = new FileOutputStream(
-                        "SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                    evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
             workbook.write(fileOut);
         } catch (IOException e) {
             e.printStackTrace();
@@ -589,7 +564,7 @@ public class MonteCarloSimulation {
         //save production excel
         
         try (FileOutputStream fileOut = new FileOutputStream(
-                "Perfiles de producción_" + oportunidad.getOportunidad()  + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+            evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad()  + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
                     productionWorkbook.write(fileOut);
 
         } catch (IOException e) {
@@ -787,18 +762,49 @@ public class MonteCarloSimulation {
     }
 
     private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
-
-        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1); // Toma todo después del último espacio
-        int result = Integer.parseInt(number);
-
-        if (result == 1) {
-            return kilometraje * (1 - pg);
-        } else if (result == 2) {
-            return kilometraje;
-        } else if (result >= 3) {
-            return kilometraje * pg;
+        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1);
+        
+        // Check if the number contains a fraction
+        if (number.contains("/")) {
+            // Parse as a fraction
+            String[] parts = number.split("/");
+            if (parts.length == 2) {
+                try {
+                    double numerator = Double.parseDouble(parts[0]);
+                    double denominator = Double.parseDouble(parts[1]);
+                    // Use the result of the fraction for your logic
+                    double result = numerator / denominator;
+                    
+                    // Adjust the logic to work with decimal values instead of integers
+                    if (result <= 1) {
+                        return kilometraje * (1 - pg);
+                    } else if (result <= 2) {
+                        return kilometraje;
+                    } else {
+                        return kilometraje * pg;
+                    }
+                } catch (NumberFormatException e) {
+                    System.err.println("Error parsing fraction: " + number);
+                    return kilometraje; // Default fallback
+                }
+            }
         }
-        return kilometraje;
+        
+        // Original integer parsing logic
+        try {
+            int result = Integer.parseInt(number);
+            if (result == 1) {
+                return kilometraje * (1 - pg);
+            } else if (result == 2) {
+                return kilometraje;
+            } else if (result >= 3) {
+                return kilometraje * pg;
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing development plan number: " + number);
+        }
+        
+        return kilometraje; // Default fallback
     }
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {

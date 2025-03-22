@@ -18,16 +18,16 @@ public class MonteCarloService {
     @Value("${OPORTEXT_ECONOMIC_EVA_PORT:8082}")
     private String economicEvaPort;
 
-    public MonteCarloSimulation createSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue) {
-        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo, iterations, pgValue);
+    public MonteCarloSimulation createSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue, String evaluationId) {
+        MonteCarloSimulation monteCarloSimulation = new MonteCarloSimulation(version, idOportunidadObjetivo, iterations, pgValue, evaluationId);
         monteCarloSimulation.setMonteCarloDAO(monteCarloDAO);
         monteCarloSimulation.setEconomicEvaHostAndPort(economicEvaHost, economicEvaPort);
         return monteCarloSimulation;
     }
 
-    public MonteCarloSimulationMultiObject createSimulationForMulti(String version, int[] idOportunidadObjetivo, int iterations, int pgValue) {
+    public MonteCarloSimulationMultiObject createSimulationForMulti(String version, int[] idOportunidadObjetivo, int iterations, int pgValue, String evaluationId) {
         MonteCarloSimulationMultiObject monteCarloSimulationMultiObject = new MonteCarloSimulationMultiObject(version,
-                idOportunidadObjetivo, economicEvaHost, economicEvaPort, iterations, pgValue);
+                idOportunidadObjetivo, economicEvaHost, economicEvaPort, iterations, pgValue, evaluationId);
         monteCarloSimulationMultiObject.setMonteCarloDAO(monteCarloDAO);
         monteCarloSimulationMultiObject.initializeSimulation();
 
