@@ -68,6 +68,7 @@ public class MonteCarloSimulationMultiObject {
     private final Map<Integer, Map<Integer, Object>> excelRowBuffers = new ConcurrentHashMap<>();
     private String[][] currentSimulationFecha;
     private Object[] resultados;
+    private String evaluationId;
 
     // private final ReentrantLock excelLock = new ReentrantLock();
 
@@ -133,19 +134,23 @@ public class MonteCarloSimulationMultiObject {
 
 
     public MonteCarloSimulationMultiObject(String version, int[] idOportunidadObjetivo, String economicEvaHost,
-            String economicEvaPort, int iterations, int pgValue) {
+            String economicEvaPort, int iterations, int pgValue, String evaluationId) {
         validateInputs(version, idOportunidadObjetivo);
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo.clone();
         this.pgValue = pgValue;
         this.cantidadIteraciones = iterations;
+        this.evaluationId = evaluationId;
         this.numOportunidades = idOportunidadObjetivo.length;
         this.numberOfVariables = DEFAULT_NUM_VARIABLES;
         this.investments = new InvestmentVariables[numOportunidades];
         this.currentSimulationFecha = new String[numOportunidades][cantidadIteraciones];
         this.resultados = new Object[cantidadIteraciones];
         this.simulacionMicrosMulti = new SimulacionMicrosMulti(restTemplate, economicEvaHost, economicEvaPort);
-
+        
+        for (int j = 0; j < cantidadIteraciones; j++) {
+            simulationParametersMatrix.put(j, new ConcurrentHashMap<>());
+        }
         for (int i = 0; i < numOportunidades; i++) {
             ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap = new ConcurrentHashMap<>();
 
@@ -154,11 +159,10 @@ public class MonteCarloSimulationMultiObject {
                 currentSimulationFecha[i][j] = "unexist";
                 int index = i * cantidadIteraciones + j;
                 excelRowBuffers.put(index, new ConcurrentHashMap<>());
-                SimulacionMicrosMulti.SimulationParameters params = new SimulacionMicrosMulti.SimulationParameters();
+                // SimulacionMicrosMulti.SimulationParameters params = new SimulacionMicrosMulti.SimulationParameters();
 
-                paramsMap.put(j, params);
+                // paramsMap.put(j, params);
 
-                simulationParametersMatrix.computeIfAbsent(j, k -> new ConcurrentHashMap<>()).put(i, params);
             }
         }
     }
@@ -321,7 +325,7 @@ public class MonteCarloSimulationMultiObject {
             CellStyle titleStyle = productionWorkbook.createCellStyle();
             titleStyle.setFont(font);
 
-            String[] years = IntStream.rangeClosed(2025, 2120).mapToObj(String::valueOf).toArray(String[]::new);
+            String[] years = IntStream.rangeClosed(2024, 2120).mapToObj(String::valueOf).toArray(String[]::new);
 
             createSheetHeaders(pceSheet, years, productionWorkbook);
             createSheetHeaders(aceiteSheet, years, productionWorkbook);
@@ -441,12 +445,10 @@ public class MonteCarloSimulationMultiObject {
             }
             
             writeResultsToExcel(sheet);
-            LocalDateTime now = LocalDateTime.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMdd_HHmm");
             
             // Save montecarlo workbook to file
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                evaluationId + "_MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                 workbook.write(fileOut);
 
             } catch (IOException e) {
@@ -454,42 +456,13 @@ public class MonteCarloSimulationMultiObject {
             }
             
             try (FileOutputStream fileOut = new FileOutputStream(
-                    "Perfiles de producción_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                evaluationId + "_Perfiles de producción_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                         productionWorkbook.write(fileOut);
 
             } catch (IOException e) {
                 System.err.println("Error writing Excel file: " + e.getMessage());
             }
             
-            // Save JSON results
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-                
-                String tempFileName = "resultadosMultiObjectivo_temp_merged" + 
-                    oportunidad[0].getIdOportunidadObjetivo() + ".json";
-                String resFileName = "resultadosMultiObjectivo_merged" + 
-                    oportunidad[0].getIdOportunidadObjetivo() + ".json";
-                
-                File tempFile = new File(tempFileName);
-                File resFile = new File(resFileName);
-                
-                objectMapper.writeValue(tempFile, responseData);
-                
-                if (resFile.exists()) {
-                    if (!resFile.delete()) {
-                        throw new IOException("No se pudo eliminar el archivo de destino: " + resFileName);
-                    }
-                }
-                
-                if (tempFile.renameTo(resFile)) {
-                    System.out.println("Resultados guardados en " + resFileName);
-                } else {
-                    System.err.println("Error al renombrar el archivo temporal: " + tempFileName);
-                }
-            } catch (IOException e) {
-                System.err.println("Error saving JSON results: " + e.getMessage());
-            }
             
             
             return ResponseEntity.ok(responseData);
@@ -788,35 +761,43 @@ public class MonteCarloSimulationMultiObject {
                     investments[objectivoIndex].triangularInversionBuqueTanqueCompra);
             params.setTriangularInversionBuqueTanqueRenta(
                     investments[objectivoIndex].triangularInversionBuqueTanqueRenta);
-        } else {
-            params.setCuota(0);
-            params.setDeclinada(0);
-            params.setPce(0);
-            params.setArea(0);
-            params.setPlataformaDesarrollo(0);
-            params.setLineaDeDescarga(0);
-            params.setEstacionCompresion(0);
-            params.setDucto(0);
-            params.setBateria(0);
-            params.setTriangularExploratorioMin(investments[objectivoIndex].triangularExploratorioMin);
-            params.setTriangularExploratorioPer(investments[objectivoIndex].triangularExploratorioPer);
-            params.setTriangularExploratorioTer(investments[objectivoIndex].triangularExploratorioTer);
-            params.setTriangularDESInfra(0);
-            params.setTriangularDESPer(0);
-            params.setTriangularDESTer(0);
-            params.setTriangularInversionArbolesSubmarinos(0);
-            params.setTriangularInversionManifolds(0);
-            params.setTriangularInversionRisers(0);
-            params.setTriangularInversionSistemasDeControl(0);
-            params.setTriangularInversionCubiertaDeProces(0);
-            params.setTriangularInversionBuqueTanqueCompra(0);
-            params.setTriangularInversionBuqueTanqueRenta(0);
-        }
 
-        ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap;
-        synchronized (simulationParametersMatrix) {
-            paramsMap = simulationParametersMatrix.computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>());
-            paramsMap.put(objectivoIndex, params);
+            ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap;
+            synchronized (simulationParametersMatrix) {
+                paramsMap = simulationParametersMatrix.computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>());
+                paramsMap.put(objectivoIndex, params);
+            }
+        } else {
+            if(objectivoIndex == 0) {
+                params.setCuota(0);
+                params.setDeclinada(0);
+                params.setPce(0);
+                params.setArea(0);
+                params.setPlataformaDesarrollo(0);
+                params.setLineaDeDescarga(0);
+                params.setEstacionCompresion(0);
+                params.setDucto(0);
+                params.setBateria(0);
+                params.setTriangularExploratorioMin(investments[objectivoIndex].triangularExploratorioMin);
+                params.setTriangularExploratorioPer(investments[objectivoIndex].triangularExploratorioPer);
+                params.setTriangularExploratorioTer(investments[objectivoIndex].triangularExploratorioTer);
+                params.setTriangularDESInfra(0);
+                params.setTriangularDESPer(0);
+                params.setTriangularDESTer(0);
+                params.setTriangularInversionArbolesSubmarinos(0);
+                params.setTriangularInversionManifolds(0);
+                params.setTriangularInversionRisers(0);
+                params.setTriangularInversionSistemasDeControl(0);
+                params.setTriangularInversionCubiertaDeProces(0);
+                params.setTriangularInversionBuqueTanqueCompra(0);
+                params.setTriangularInversionBuqueTanqueRenta(0);
+
+                ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap;
+                synchronized (simulationParametersMatrix) {
+                    paramsMap = simulationParametersMatrix.computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>());
+                    paramsMap.put(objectivoIndex, params);
+                }
+            }
         }
 
     }
@@ -1133,18 +1114,49 @@ public class MonteCarloSimulationMultiObject {
     }
 
     private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
-
-        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1); // Toma todo después del último espacio
-        int result = Integer.parseInt(number);
-
-        if (result == 1) {
-            return kilometraje * (1 - pg);
-        } else if (result == 2) {
-            return kilometraje;
-        } else if (result >= 3) {
-            return kilometraje * pg;
+        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1);
+        
+        // Check if the number contains a fraction
+        if (number.contains("/")) {
+            // Parse as a fraction
+            String[] parts = number.split("/");
+            if (parts.length == 2) {
+                try {
+                    double numerator = Double.parseDouble(parts[0]);
+                    double denominator = Double.parseDouble(parts[1]);
+                    // Use the result of the fraction for your logic
+                    double result = numerator / denominator;
+                    
+                    // Adjust the logic to work with decimal values instead of integers
+                    if (result <= 1) {
+                        return kilometraje * (1 - pg);
+                    } else if (result <= 2) {
+                        return kilometraje;
+                    } else {
+                        return kilometraje * pg;
+                    }
+                } catch (NumberFormatException e) {
+                    System.err.println("Error parsing fraction: " + number);
+                    return kilometraje; // Default fallback
+                }
+            }
         }
-        return kilometraje;
+        
+        // Original integer parsing logic
+        try {
+            int result = Integer.parseInt(number);
+            if (result == 1) {
+                return kilometraje * (1 - pg);
+            } else if (result == 2) {
+                return kilometraje;
+            } else if (result >= 3) {
+                return kilometraje * pg;
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing development plan number: " + number);
+        }
+        
+        return kilometraje; // Default fallback
     }
 
 

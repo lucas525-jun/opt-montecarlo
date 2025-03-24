@@ -6,12 +6,30 @@ import com.pemex.oportexp.impl.MonteCarloSimulationMultiObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import com.pemex.oportexp.impl.MonteCarloDAO;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @RestController
 @RequestMapping("/api/simulation")
@@ -32,6 +50,7 @@ public class MonteCarloSimulationController {
     @Value("${OPORTEXT_GENEXCEL_POST:3000}")
     private String genExcelPort;
 
+
     @GetMapping("/run")
     public ResponseEntity<?> runSimulation(
             @RequestParam("Version") String version,
@@ -39,15 +58,14 @@ public class MonteCarloSimulationController {
             @RequestParam("IdOportunidad") int idOportunidad,
             @RequestParam("evaluationType") String evaluationType,
             @RequestParam("iterationsNumber") int iterations,
-            @RequestParam("pgValue") int pgValue) {
+            @RequestParam("pgValue") int pgValue,
+            @RequestParam("evaluationId") String evaluationId) {
 
         List<Map<String, Object>> multiObjetivos;
-        // if(idOportunidad != 4188)
-        //     return null;
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
         if (evaluationType.equals("opportunity") && multiObjetivos.size() > 1) {
-            System.err.println("Multi object started.");
+            System.err.println("Multi Object started.");
             int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
             for (int i = 0; i < multiObjetivos.size(); i++) {
                 idOportunidadObjetivoArray[i] = (int) multiObjetivos.get(i).get("idoportunidadobjetivo");
@@ -57,10 +75,11 @@ public class MonteCarloSimulationController {
                             version,
                             idOportunidadObjetivoArray, 
                             iterations, 
-                            pgValue);
+                            pgValue,
+                            evaluationId);
             resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
         } else {
-            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue);
+            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue, evaluationId);
             resultados = monteCarloSimulation.runSimulation().getBody();
 
         }
@@ -72,7 +91,10 @@ public class MonteCarloSimulationController {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // Crea la solicitud HTTP
-            HttpEntity<List<Object>> request = new HttpEntity<>(resultados, headers);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("resultados", resultados);
+            requestBody.put("evaluationType", evaluationType);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Llama al servidor Node.js
             ResponseEntity<byte[]> response = restTemplate.exchange(
@@ -83,7 +105,6 @@ public class MonteCarloSimulationController {
 
             // Verifica si la respuesta es válida
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                // Configura las cabeceras para la descarga
                 HttpHeaders fileHeaders = new HttpHeaders();
                 fileHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
                 fileHeaders.setContentDisposition(ContentDisposition
@@ -101,5 +122,83 @@ public class MonteCarloSimulationController {
                     .body("Error en la simulación: " + e.getMessage());
         }
     }
+    
+    /**
+     * Collects all files with names starting with evaluationId, compresses them into a ZIP file,
+     * deletes the source files, and returns the ZIP to the frontend.
+     *
+     * @param evaluationId Unique identifier for the evaluation session
+     * @param versionName Version name from the simulation
+     * @return ZIP file containing all Monte Carlo simulation files for the given evaluation
+     */
+    @GetMapping("/downloadexcel")
+    public ResponseEntity<Resource> downloadMonteCarloZip(
+        @RequestParam("evaluationId") String evaluationId,
+        @RequestParam("versionName") String versionName) {
 
+        
+        try {
+            // Use the fixed directory path
+            Path workingDir = Paths.get("").toAbsolutePath();
+            Path directoryPath = workingDir;
+
+            List<Path> filesToZip = Files.list(directoryPath)
+                .filter(path -> {
+                    boolean matches = path.getFileName().toString().contains(evaluationId);
+                    return matches;
+                })
+                .collect(Collectors.toList());
+
+            if (filesToZip.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(null);
+            }
+            
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(baos);
+            
+            for (Path filePath : filesToZip) {
+                File file = filePath.toFile();
+                ZipEntry zipEntry = new ZipEntry(file.getName());
+                zos.putNextEntry(zipEntry);
+                
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    byte[] buffer = new byte[8192]; // Larger buffer for performance
+                    int length;
+                    while ((length = fis.read(buffer)) > 0) {
+                        zos.write(buffer, 0, length);
+                    }
+                    zos.closeEntry();
+                }
+            }
+            
+            zos.close();
+            byte[] zipBytes = baos.toByteArray();
+            ByteArrayResource resource = new ByteArrayResource(zipBytes);
+            
+            for (Path filePath : filesToZip) {
+                try {
+                    Files.delete(filePath);
+                } catch (IOException e) {
+                    System.err.println("Could not delete file: " + filePath.getFileName() + ": " + e.getMessage());
+                    // Continue with the process even if deletion fails
+                }
+            }
+            
+            // Prepare and return the ZIP file
+            String zipFileName = "MonteCarlo_" + evaluationId + ".zip";
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFileName + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentLength(resource.contentLength())
+                    .body(resource);
+                    
+        } catch (IOException e) {
+            System.err.println("Error creating Monte Carlo ZIP file: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
 }
