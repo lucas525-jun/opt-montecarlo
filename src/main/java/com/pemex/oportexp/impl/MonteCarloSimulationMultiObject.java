@@ -12,12 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -87,6 +83,12 @@ public class MonteCarloSimulationMultiObject {
             "ducto", "Arboles submarinos", "manifols", "risers",
             "Sistemas de control", "Cubierta Proces", "Buquetaquecompra", "buquetaQuerenta"
     };
+
+    // Add these data structures at the class level
+    private List<Map<String, Object>> pceSheetData = Collections.synchronizedList(new ArrayList<>());
+    private List<Map<String, Object>> aceiteSheetData = Collections.synchronizedList(new ArrayList<>());
+    private List<Map<String, Object>> gasSheetData = Collections.synchronizedList(new ArrayList<>());
+    private List<Map<String, Object>> condensadoSheetData = Collections.synchronizedList(new ArrayList<>());
     private final int HEADERS_SIZE = headers.length;
 
     private static final class Indices {
@@ -312,7 +314,54 @@ public class MonteCarloSimulationMultiObject {
         Sheet sheet = null;
         
         try {
+            int threadPoolSize = Runtime.getRuntime().availableProcessors(); 
+            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize); 
+            List<Future<Void>> futures = new ArrayList<>();
+            
+            for (int i = 0; i < cantidadIteraciones; i++) {
+                int finalI = i;
+                final int iteration = i;
+                futures.add(executor.submit(() -> {
+                    Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
+                    excelRowBuffers.put(finalI, excelRowData);
+                   
+                    ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = 
+                        simulationParametersMatrix.get(finalI);
+                    
+                    simulateOpportunities(finalI, excelRowData);
+                    if (paramsArray != null) {
+                        resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
+                        synchronized (resultadosQueue) {
+                            resultadosQueue.add(resultados[finalI]);
+                        }
+                        collectSheetData(finalI, iteration+2);
+                    } else {
+                        System.err.println("No simulation parameters found for iteration " + finalI);
+                    }
+                    return null;
+                }));
+            }
+            
+            for (Future<Void> future : futures) {
+                try {
+                    future.get();
+                } catch (Exception e) {
+                    System.err.println("Simulation task failed: " + e.getMessage());
+                }
+            }
+            
+            try {
+                executor.shutdown();
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
 
+            String[] years = determineYearRange();
+             
             productionWorkbook = new XSSFWorkbook();
             Sheet pceSheet = productionWorkbook.createSheet("PCE");
             Sheet aceiteSheet = productionWorkbook.createSheet("Aceite");
@@ -325,7 +374,6 @@ public class MonteCarloSimulationMultiObject {
             CellStyle titleStyle = productionWorkbook.createCellStyle();
             titleStyle.setFont(font);
 
-            String[] years = IntStream.rangeClosed(2024, 2120).mapToObj(String::valueOf).toArray(String[]::new);
 
             createSheetHeaders(pceSheet, years, productionWorkbook);
             createSheetHeaders(aceiteSheet, years, productionWorkbook);
@@ -360,57 +408,7 @@ public class MonteCarloSimulationMultiObject {
             sheet = workbook.createSheet("Simulación Monte Carlo");
             createHeaderRow(sheet, workbook);
             
-            int threadPoolSize = Runtime.getRuntime().availableProcessors(); 
-            ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize); 
-            List<Future<Void>> futures = new ArrayList<>();
-            
-            for (int i = 0; i < cantidadIteraciones; i++) {
-                int finalI = i;
-
-                futures.add(executor.submit(() -> {
-                    Map<Integer, Object> excelRowData = new ConcurrentHashMap<>();
-                    excelRowBuffers.put(finalI, excelRowData);
-                   
-                    ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsArray = 
-                        simulationParametersMatrix.get(finalI);
-                    
-                    simulateOpportunities(finalI, excelRowData);
-                    if (paramsArray != null) {
-                        resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
-                        synchronized (resultadosQueue) {
-                            resultadosQueue.add(resultados[finalI]);
-                        }
-                        writeDataToSheets(resultados[finalI], pceSheet, aceiteSheet, gasSheet, condensadoSheet, years, finalI+2);
-                    } else {
-                        System.err.println("No simulation parameters found for iteration " + finalI);
-                    }
-                    return null;
-                }));
-            }
-            
-            for (Future<Void> future : futures) {
-                try {
-                    future.get();
-                } catch (Exception e) {
-                    System.err.println("Simulation task failed: " + e.getMessage());
-                }
-            }
-            
-            try {
-                executor.shutdown();
-                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-                    executor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-
-            writeToSheet(pceSheet, 0, 1, grandTotalPCE.get() / cantidadIteraciones);
-            writeToSheet(aceiteSheet, 0, 1, grandTotalAceite.get() / cantidadIteraciones);
-            writeToSheet(gasSheet, 0, 1, grandTotalGas.get() / cantidadIteraciones);
-            writeToSheet(condensadoSheet, 0, 1, grandTotalCondensado.get() / cantidadIteraciones);
-            
+            writeBatchDataToSheets(pceSheet, aceiteSheet, gasSheet, condensadoSheet, years);
             
             // Process results after all simulations are complete
             List<Double>[] reporteArray805 = new List[numOportunidades];
@@ -483,6 +481,32 @@ public class MonteCarloSimulationMultiObject {
         }
     }
 
+    private String[] determineYearRange() {
+        Set<String> yearSet = new HashSet<>();
+        
+        // Process all results in the queue to find all unique years
+        for (Object resultado : resultadosQueue) {
+            if (resultado instanceof Map) {
+                Map<String, Object> resultMap = (Map<String, Object>) resultado;
+                List<Map<String, Object>> evaluacionEconomica = (List<Map<String, Object>>) resultMap.get("evaluacionEconomica");
+                
+                if (evaluacionEconomica != null) {
+                    for (Map<String, Object> evaluacion : evaluacionEconomica) {
+                        String anio = (String) evaluacion.get("anio");
+                        if (anio != null) {
+                            yearSet.add(anio);
+                        }
+                    }
+                }
+            }
+        }
+        
+        String[] years = yearSet.toArray(new String[0]);
+        Arrays.sort(years);
+        
+        return years;
+    }
+
     private void writeToSheet(Sheet sheet, int rowCounter, int columnIndex, double value) {
         Row row = sheet.getRow(rowCounter);
         if (row == null) {
@@ -492,92 +516,125 @@ public class MonteCarloSimulationMultiObject {
         cell.setCellValue(value);
     }
 
-    private void writeDataToSheets(Object resultado, Sheet pceSheet, Sheet aceiteSheet, Sheet gasSheet, Sheet condensadoSheet, String[] years, int iterationNumber) {
-        double totalPCEVal = 0.0;
-        double totalAceiteVal = 0.0;
-        double totalGasVal = 0.0;
-        double totalCondensadoVal = 0.0;
-        if (resultado instanceof Map) {
-            Map<String, Object> resultMap = (Map<String, Object>) resultado;
+    private void collectSheetData(int finalI, int iterationNumber) {
+        Object eachResultado = resultados[finalI];
+        if (eachResultado instanceof Map) {
+            Map<String, Object> resultMap = (Map<String, Object>) eachResultado;
             List<Map<String, Object>> evaluacionEconomica = (List<Map<String, Object>>) resultMap.get("evaluacionEconomica");
-            synchronized (pceSheet) {
-                writeToSheet(pceSheet, iterationNumber, 0, iterationNumber - 1); 
+            
+            if (evaluacionEconomica == null) {
+                return;
             }
-
-            synchronized (aceiteSheet) {
-                writeToSheet(aceiteSheet, iterationNumber, 0, iterationNumber - 1); 
-            }
-
-            synchronized (gasSheet) {
-                writeToSheet(gasSheet, iterationNumber, 0, iterationNumber - 1); 
-            }
-
-            synchronized (condensadoSheet) {
-                writeToSheet(condensadoSheet, iterationNumber, 0, iterationNumber - 1); 
-            }
+            
+            Map<String, Object> pceRow = new HashMap<>();
+            Map<String, Object> aceiteRow = new HashMap<>();
+            Map<String, Object> gasRow = new HashMap<>();
+            Map<String, Object> condensadoRow = new HashMap<>();
+            
+            pceRow.put("iteration", iterationNumber - 1);
+            aceiteRow.put("iteration", iterationNumber - 1);
+            gasRow.put("iteration", iterationNumber - 1);
+            condensadoRow.put("iteration", iterationNumber - 1);
+            
+            // Use these for accumulating totals
+            double pceTotal = 0.0;
+            double aceiteTotal = 0.0;
+            double gasTotal = 0.0;
+            double condensadoTotal = 0.0;
+            
             for (Map<String, Object> evaluacion : evaluacionEconomica) {
                 String anio = (String) evaluacion.get("anio");
                 Map<String, Object> produccionDiariaPromedio = (Map<String, Object>) evaluacion.get("produccionDiariaPromedio");
                 
                 if (produccionDiariaPromedio != null) {
-                    double mbpce = produccionDiariaPromedio.get("mbpce") != null ? ((Number) produccionDiariaPromedio.get("mbpce")).doubleValue() : 0.0;
-                    double aceiteTotal = produccionDiariaPromedio.get("aceiteTotal") != null ? ((Number) produccionDiariaPromedio.get("aceiteTotal")).doubleValue() : 0.0;
-                    double gasTotal = produccionDiariaPromedio.get("gasTotal") != null ? ((Number) produccionDiariaPromedio.get("gasTotal")).doubleValue() : 0.0;
-                    double condensado = produccionDiariaPromedio.get("condensado") != null ? ((Number) produccionDiariaPromedio.get("condensado")).doubleValue() : 0.0;
-
-                    totalPCEVal+= mbpce;
-                    totalAceiteVal+= aceiteTotal;
-                    totalGasVal+= gasTotal;
-                    totalCondensadoVal+= condensado;
-
-                    int yearIndex = Arrays.asList(years).indexOf(anio);
-                    if (yearIndex != -1) {
-                        
-                        synchronized (pceSheet) {
-                            writeToSheet(pceSheet, iterationNumber, yearIndex + 2, mbpce); 
-                        }
-
-                        synchronized (aceiteSheet) {
-                            writeToSheet(aceiteSheet, iterationNumber, yearIndex + 2, aceiteTotal);
-                        }
-
-                        synchronized (gasSheet) {
-                            writeToSheet(gasSheet, iterationNumber, yearIndex + 2, gasTotal);
-                        }
-
-                        synchronized (condensadoSheet) {
-                            writeToSheet(condensadoSheet, iterationNumber, yearIndex + 2, condensado);
-                        }
-                    }
+                    double mbpce = produccionDiariaPromedio.get("mbpce") != null ? 
+                        ((Number) produccionDiariaPromedio.get("mbpce")).doubleValue() : 0.0;
+                    double aceiteTotalValue = produccionDiariaPromedio.get("aceiteTotal") != null ? 
+                        ((Number) produccionDiariaPromedio.get("aceiteTotal")).doubleValue() : 0.0;
+                    double gasTotalValue = produccionDiariaPromedio.get("gasTotal") != null ? 
+                        ((Number) produccionDiariaPromedio.get("gasTotal")).doubleValue() : 0.0;
+                    double condensado = produccionDiariaPromedio.get("condensado") != null ? 
+                        ((Number) produccionDiariaPromedio.get("condensado")).doubleValue() : 0.0;
+                    
+                    // Keep running sum of all values
+                    pceTotal += mbpce;
+                    aceiteTotal += aceiteTotalValue;
+                    gasTotal += gasTotalValue;
+                    condensadoTotal += condensado;
+    
+                    pceRow.put(anio, mbpce);
+                    aceiteRow.put(anio, aceiteTotalValue);
+                    gasRow.put(anio, gasTotalValue);
+                    condensadoRow.put(anio, condensado);
                 }
             }
-            final double finalTotalPCEVal = totalPCEVal;
-            final double finalTotalAceiteVal = totalAceiteVal;
-            final double finalTotalGasVal = totalGasVal;
-            final double finalTotalCondensadoVal = totalCondensadoVal;
-
-            grandTotalPCE.updateAndGet(currentTotal -> currentTotal + finalTotalPCEVal);
-            grandTotalAceite.updateAndGet(currentTotal -> currentTotal + finalTotalAceiteVal);
-            grandTotalGas.updateAndGet(currentTotal -> currentTotal + finalTotalGasVal);
-            grandTotalCondensado.updateAndGet(currentTotal -> currentTotal + finalTotalCondensadoVal);
-
-            synchronized (pceSheet) {
-                writeToSheet(pceSheet, iterationNumber, 1, totalPCEVal); 
-            }
             
-            synchronized (aceiteSheet) {
-                writeToSheet(aceiteSheet, iterationNumber, 1, totalAceiteVal); 
-            }
-            synchronized (gasSheet) {
-                writeToSheet(gasSheet, iterationNumber, 1, totalGasVal); 
-            }
-            synchronized (condensadoSheet) {
-                writeToSheet(condensadoSheet, iterationNumber, 1, totalCondensadoVal); 
-            }
+            // Store the final totals
+            pceRow.put("total", pceTotal);
+            aceiteRow.put("total", aceiteTotal);
+            gasRow.put("total", gasTotal);
+            condensadoRow.put("total", condensadoTotal);
+            
+            // Update grand totals atomically with the final calculated values
+            final double finalPceTotal = pceTotal;
+            final double finalAceiteTotal = aceiteTotal;
+            final double finalGasTotal = gasTotal;
+            final double finalCondensadoTotal = condensadoTotal;
 
+            grandTotalPCE.updateAndGet(currentTotal -> currentTotal + finalPceTotal);
+            grandTotalAceite.updateAndGet(currentTotal -> currentTotal + finalAceiteTotal);
+            grandTotalGas.updateAndGet(currentTotal -> currentTotal + finalGasTotal);
+            grandTotalCondensado.updateAndGet(currentTotal -> currentTotal + finalCondensadoTotal);
+            
+            // Add collected data to lists
+            pceSheetData.add(pceRow);
+            aceiteSheetData.add(aceiteRow);
+            gasSheetData.add(gasRow);
+            condensadoSheetData.add(condensadoRow);
         }
     }
-
+    private void writeBatchDataToSheets(Sheet pceSheet, Sheet aceiteSheet, Sheet gasSheet, Sheet condensadoSheet, String[] years) {
+        writeSingleSheetData(pceSheet, pceSheetData, years);
+        writeSingleSheetData(aceiteSheet, aceiteSheetData, years);
+        writeSingleSheetData(gasSheet, gasSheetData, years);
+        writeSingleSheetData(condensadoSheet, condensadoSheetData, years);
+        
+        // Write grand totals to the first row (average values)
+        if (cantidadIteraciones > 0) {
+            writeToSheet(pceSheet, 0, 1, grandTotalPCE.get() / cantidadIteraciones);
+            writeToSheet(aceiteSheet, 0, 1, grandTotalAceite.get() / cantidadIteraciones);
+            writeToSheet(gasSheet, 0, 1, grandTotalGas.get() / cantidadIteraciones);
+            writeToSheet(condensadoSheet, 0, 1, grandTotalCondensado.get() / cantidadIteraciones);
+        }
+    }
+    
+    private void writeSingleSheetData(Sheet sheet, List<Map<String, Object>> sheetData, String[] years) {
+        for (Map<String, Object> rowData : sheetData) {
+            int rowNum = ((Number) rowData.get("iteration")).intValue() + 1; // +1 for header rows
+            Row row = sheet.createRow(rowNum);
+            
+            // Write iteration number
+            Cell iterationCell = row.createCell(0);
+            iterationCell.setCellValue(((Number) rowData.get("iteration")).doubleValue());
+            
+            // Write total
+            Cell totalCell = row.createCell(1);
+            totalCell.setCellValue(((Number) rowData.get("total")).doubleValue());
+            
+            // Write year data - only for years that exist in our determined year range
+            for (int i = 0; i < years.length; i++) {
+                String year = years[i];
+                Cell cell = row.createCell(i + 2);
+                Object value = rowData.get(year);
+                if (value != null) {
+                    cell.setCellValue(((Number) value).doubleValue());
+                } else {
+                    cell.setCellValue(0.0);
+                }
+            }
+        }
+    }
+    
     private void createSheetHeaders(Sheet sheet, String[] years, Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
         // style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -657,7 +714,6 @@ public class MonteCarloSimulationMultiObject {
             }
         }
         
-        // Always store the row data, even if some objectives failed
         excelRowBuffers.put(iterationNumber, excelRowData);
     }
 
