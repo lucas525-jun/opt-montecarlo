@@ -53,8 +53,7 @@ public class SimulacionMicros {
 
                             double plataformaDesarrollo, double lineaDeDescarga, double estacionCompresion, double ducto,
                             double bateria,
-
-                            double triangulaeconomicEvaPortrExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
+                            double triangularExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
                             double triangularDESInfra, double triangularDESPer, double triangularDESTer,
                             double triangularInversionArbolesSubmarinos, double triangularInversionManifolds,
                             double triangularInversionRisers,
