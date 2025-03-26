@@ -7,6 +7,7 @@ import lombok.Setter;
 import com.pemex.oportexp.Models.Oportunidad;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -209,7 +210,7 @@ public class MonteCarloSimulationMultiObject {
                 precomputedRandomNumbers[i][j] = threadLocalRandom.get().nextDouble();
             }
         });
-        
+
         for (int i = 0; i < numOportunidades; i++) {
             this.randomNumbers[i] = new CopyOnWriteArrayList<>(
                 IntStream.range(0, cantidadIteraciones * numberOfVariables)
@@ -321,8 +322,8 @@ public class MonteCarloSimulationMultiObject {
         iterationNumber.set(1);
         
         // Create workbook and sheet ONCE before starting threads
-        Workbook workbook = null;
-        Workbook productionWorkbook = null;
+        Workbook workbook = new SXSSFWorkbook(100);
+        Workbook productionWorkbook = new SXSSFWorkbook(100);
         Sheet sheet = null;
         
         try {
@@ -476,7 +477,6 @@ public class MonteCarloSimulationMultiObject {
                 System.err.println("Error writing Excel file: " + e.getMessage());
             }
             
-            
             cleanupResources();
 
             return ResponseEntity.ok(responseData);
@@ -485,6 +485,8 @@ public class MonteCarloSimulationMultiObject {
             System.err.println("Critical error in simulation: " + e.getMessage());
             e.printStackTrace();
             cleanupResources();
+            ((SXSSFWorkbook) productionWorkbook).dispose();
+            ((SXSSFWorkbook) workbook).dispose();
             return ResponseEntity.internalServerError().build();
         } finally {
             // Close workbook in finally block
@@ -524,6 +526,7 @@ public class MonteCarloSimulationMultiObject {
         for (List<Double> randomList : randomNumbers) {
             randomList.clear();
         }
+        
     }
     private String[] determineYearRange() {
         Set<String> yearSet = new HashSet<>();
