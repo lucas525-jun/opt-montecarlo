@@ -569,6 +569,8 @@ public class MonteCarloSimulation {
 
         } catch (IOException e) {
             System.err.println("Error writing Excel file: " + e.getMessage());
+        } finally {
+            cleanup();
         }
         return ResponseEntity.ok(resultados);
 
@@ -941,6 +943,12 @@ public class MonteCarloSimulation {
                 cell.setCellValue(value.toString());
             }
         });
+    }
+    public void cleanup() {
+        pceSheetData.clear();
+        aceiteSheetData.clear();
+        gasSheetData.clear();
+        condensadoSheetData.clear();
     }
 
 }
