@@ -197,7 +197,19 @@ public class MonteCarloSimulationMultiObject {
         this.randomNumbers = new CopyOnWriteArrayList[numOportunidades];
         this.precomputedRandomNumbers = new double[numOportunidades][cantidadIteraciones];
 
-
+        ThreadLocal<Random> threadLocalRandom = ThreadLocal.withInitial(Random::new);
+        IntStream.range(0, numOportunidades).parallel().forEach(i -> {
+            this.randomNumbers[i] = new CopyOnWriteArrayList<>(
+                IntStream.range(0, cantidadIteraciones * numberOfVariables)
+                    .mapToDouble(j -> threadLocalRandom.get().nextDouble())
+                    .boxed()
+                    .collect(Collectors.toList())
+            );
+            for (int j = 0; j < cantidadIteraciones; j++) {
+                precomputedRandomNumbers[i][j] = threadLocalRandom.get().nextDouble();
+            }
+        });
+        
         for (int i = 0; i < numOportunidades; i++) {
             this.randomNumbers[i] = new CopyOnWriteArrayList<>(
                 IntStream.range(0, cantidadIteraciones * numberOfVariables)
@@ -352,10 +364,13 @@ public class MonteCarloSimulationMultiObject {
             
             try {
                 executor.shutdown();
-                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-                    executor.shutdownNow();
+                if (!executor.awaitTermination(300, TimeUnit.SECONDS)) { // Increased from 60 to 300 seconds
+                    System.err.println("Thread pool did not terminate in time - forcing shutdown");
+                    List<Runnable> unfinishedTasks = executor.shutdownNow();
+                    System.err.println("Cancelled " + unfinishedTasks.size() + " tasks");
                 }
             } catch (InterruptedException e) {
+                System.err.println("Thread pool shutdown interrupted");
                 executor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
@@ -462,12 +477,14 @@ public class MonteCarloSimulationMultiObject {
             }
             
             
-            
+            cleanupResources();
+
             return ResponseEntity.ok(responseData);
             
         } catch (Exception e) {
             System.err.println("Critical error in simulation: " + e.getMessage());
             e.printStackTrace();
+            cleanupResources();
             return ResponseEntity.internalServerError().build();
         } finally {
             // Close workbook in finally block
@@ -480,7 +497,34 @@ public class MonteCarloSimulationMultiObject {
             }
         }
     }
-
+    private void cleanupResources() {
+        // Clear all large data structures
+        pceSheetData.clear();
+        aceiteSheetData.clear();
+        gasSheetData.clear();
+        condensadoSheetData.clear();
+        resultadosQueue.clear();
+        limitesEconomicosRepetidos.clear();
+        excelRowBuffers.clear();
+        
+        // Clear simulation parameters
+        for (ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap : 
+             simulationParametersMatrix.values()) {
+            paramsMap.clear();
+        }
+        simulationParametersMatrix.clear();
+        
+        // Reset atomic references
+        grandTotalPCE.set(0.0);
+        grandTotalAceite.set(0.0);
+        grandTotalGas.set(0.0);
+        grandTotalCondensado.set(0.0);
+        
+        // Clear random number caches if they won't be reused
+        for (List<Double> randomList : randomNumbers) {
+            randomList.clear();
+        }
+    }
     private String[] determineYearRange() {
         Set<String> yearSet = new HashSet<>();
         
@@ -598,6 +642,10 @@ public class MonteCarloSimulationMultiObject {
         writeSingleSheetData(aceiteSheet, aceiteSheetData, years);
         writeSingleSheetData(gasSheet, gasSheetData, years);
         writeSingleSheetData(condensadoSheet, condensadoSheetData, years);
+        pceSheetData.clear();
+        aceiteSheetData.clear();
+        gasSheetData.clear();
+        condensadoSheetData.clear();
         
         // Write grand totals to the first row (average values)
         if (cantidadIteraciones > 0) {
@@ -633,6 +681,8 @@ public class MonteCarloSimulationMultiObject {
                 }
             }
         }
+
+        
     }
     
     private void createSheetHeaders(Sheet sheet, String[] years, Workbook workbook) {

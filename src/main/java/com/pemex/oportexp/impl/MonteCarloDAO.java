@@ -521,13 +521,14 @@ public class MonteCarloDAO {
                 }
             }
 
-            PreparedStatement stmt2 = connection.prepareStatement(query);
-            stmt2.setInt(1, idVersionAct);
-            stmt2.setInt(2, idOportunidadObjetivo);
-
-            try (ResultSet rs = stmt2.executeQuery()) {
-                if (rs.next()) {
-                    resultado = rs.getDouble("mediaarea");
+            try (PreparedStatement stmt2 = connection.prepareStatement(query)) {
+                stmt2.setInt(1, idVersionAct);
+                stmt2.setInt(2, idOportunidadObjetivo);
+                
+                try (ResultSet rs = stmt2.executeQuery()) {
+                    if (rs.next()) {
+                        resultado = rs.getDouble("mediaarea");
+                    }
                 }
             }
         } catch (SQLException e) {
