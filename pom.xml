@@ -91,7 +91,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <jvmArguments>
-                        -Xmx2g -Xms1g
+                        -Xms2g -Xmx4g
                     </jvmArguments>
                 </configuration>
             </plugin>
