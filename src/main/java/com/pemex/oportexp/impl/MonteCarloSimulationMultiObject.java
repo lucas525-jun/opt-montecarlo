@@ -7,6 +7,7 @@ import lombok.Setter;
 import com.pemex.oportexp.Models.Oportunidad;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -209,7 +210,7 @@ public class MonteCarloSimulationMultiObject {
                 precomputedRandomNumbers[i][j] = threadLocalRandom.get().nextDouble();
             }
         });
-        
+
         for (int i = 0; i < numOportunidades; i++) {
             this.randomNumbers[i] = new CopyOnWriteArrayList<>(
                 IntStream.range(0, cantidadIteraciones * numberOfVariables)
@@ -321,8 +322,8 @@ public class MonteCarloSimulationMultiObject {
         iterationNumber.set(1);
         
         // Create workbook and sheet ONCE before starting threads
-        Workbook workbook = null;
-        Workbook productionWorkbook = null;
+        Workbook workbook = new XSSFWorkbook();
+        // Workbook productionWorkbook = new XSSFWorkbook();
         Sheet sheet = null;
         
         try {
@@ -346,7 +347,7 @@ public class MonteCarloSimulationMultiObject {
                         synchronized (resultadosQueue) {
                             resultadosQueue.add(resultados[finalI]);
                         }
-                        collectSheetData(finalI, iteration+2);
+                        // collectSheetData(finalI, iteration+2);
                     } else {
                         System.err.println("No simulation parameters found for iteration " + finalI);
                     }
@@ -375,55 +376,55 @@ public class MonteCarloSimulationMultiObject {
                 Thread.currentThread().interrupt();
             }
 
-            String[] years = determineYearRange();
+            // String[] years = determineYearRange();
              
-            productionWorkbook = new XSSFWorkbook();
-            Sheet pceSheet = productionWorkbook.createSheet("PCE");
-            Sheet aceiteSheet = productionWorkbook.createSheet("Aceite");
-            Sheet gasSheet = productionWorkbook.createSheet("Gas");
-            Sheet condensadoSheet = productionWorkbook.createSheet("Condensado");
+            // productionWorkbook = new XSSFWorkbook();
+            // Sheet pceSheet = productionWorkbook.createSheet("PCE");
+            // Sheet aceiteSheet = productionWorkbook.createSheet("Aceite");
+            // Sheet gasSheet = productionWorkbook.createSheet("Gas");
+            // Sheet condensadoSheet = productionWorkbook.createSheet("Condensado");
 
-            Font font = productionWorkbook.createFont();
-            font.setFontHeightInPoints((short) 16); 
-            font.setBold(true); 
-            CellStyle titleStyle = productionWorkbook.createCellStyle();
-            titleStyle.setFont(font);
+            // Font font = productionWorkbook.createFont();
+            // font.setFontHeightInPoints((short) 16); 
+            // font.setBold(true); 
+            // CellStyle titleStyle = productionWorkbook.createCellStyle();
+            // titleStyle.setFont(font);
 
 
-            createSheetHeaders(pceSheet, years, productionWorkbook);
-            createSheetHeaders(aceiteSheet, years, productionWorkbook);
-            createSheetHeaders(gasSheet, years, productionWorkbook);
-            createSheetHeaders(condensadoSheet, years, productionWorkbook);
+            // createSheetHeaders(pceSheet, years, productionWorkbook);
+            // createSheetHeaders(aceiteSheet, years, productionWorkbook);
+            // createSheetHeaders(gasSheet, years, productionWorkbook);
+            // createSheetHeaders(condensadoSheet, years, productionWorkbook);
 
-            Row titleRowOfPce = pceSheet.createRow(0);
-            titleRowOfPce.setHeight((short) 600);
-            Cell titleCellOfPce = titleRowOfPce.createCell(2);
-            titleCellOfPce.setCellValue("Producción diaria promedio de Petróleo Crudo Equivalente (mbpced)");
-            titleCellOfPce.setCellStyle(titleStyle);
+            // Row titleRowOfPce = pceSheet.createRow(0);
+            // titleRowOfPce.setHeight((short) 600);
+            // Cell titleCellOfPce = titleRowOfPce.createCell(2);
+            // titleCellOfPce.setCellValue("Producción diaria promedio de Petróleo Crudo Equivalente (mbpced)");
+            // titleCellOfPce.setCellStyle(titleStyle);
 
-            Row titleRowOfAceite = aceiteSheet.createRow(0);
-            titleRowOfAceite.setHeight((short) 600);
-            Cell titleCellOfAceite = titleRowOfAceite.createCell(2);
-            titleCellOfAceite.setCellValue("Producción diaria promedio de Aceite (mbd)");
-            titleCellOfAceite.setCellStyle(titleStyle);
+            // Row titleRowOfAceite = aceiteSheet.createRow(0);
+            // titleRowOfAceite.setHeight((short) 600);
+            // Cell titleCellOfAceite = titleRowOfAceite.createCell(2);
+            // titleCellOfAceite.setCellValue("Producción diaria promedio de Aceite (mbd)");
+            // titleCellOfAceite.setCellStyle(titleStyle);
 
-            Row titleRowOfGas = gasSheet.createRow(0);
-            titleRowOfGas.setHeight((short) 600);
-            Cell titleCellOfGas = titleRowOfGas.createCell(2);
-            titleCellOfGas.setCellValue("Producción diaria promedio de Gas (mmpcd)");
-            titleCellOfGas.setCellStyle(titleStyle);
+            // Row titleRowOfGas = gasSheet.createRow(0);
+            // titleRowOfGas.setHeight((short) 600);
+            // Cell titleCellOfGas = titleRowOfGas.createCell(2);
+            // titleCellOfGas.setCellValue("Producción diaria promedio de Gas (mmpcd)");
+            // titleCellOfGas.setCellStyle(titleStyle);
 
-            Row titleRowOfCondensado = condensadoSheet.createRow(0);
-            titleRowOfCondensado.setHeight((short) 600);
-            Cell titleCellOfCondensado = titleRowOfCondensado.createCell(2);
-            titleCellOfCondensado.setCellValue("Producción diaria promedio de Condensado (mbd)");
-            titleCellOfCondensado.setCellStyle(titleStyle);
+            // Row titleRowOfCondensado = condensadoSheet.createRow(0);
+            // titleRowOfCondensado.setHeight((short) 600);
+            // Cell titleCellOfCondensado = titleRowOfCondensado.createCell(2);
+            // titleCellOfCondensado.setCellValue("Producción diaria promedio de Condensado (mbd)");
+            // titleCellOfCondensado.setCellStyle(titleStyle);
+            // writeBatchDataToSheets(pceSheet, aceiteSheet, gasSheet, condensadoSheet, years);
 
             workbook = createWorkbook();
             sheet = workbook.createSheet("Simulación Monte Carlo");
             createHeaderRow(sheet, workbook);
             
-            writeBatchDataToSheets(pceSheet, aceiteSheet, gasSheet, condensadoSheet, years);
             
             // Process results after all simulations are complete
             List<Double>[] reporteArray805 = new List[numOportunidades];
@@ -468,26 +469,26 @@ public class MonteCarloSimulationMultiObject {
                 System.err.println("Error writing Excel file: " + e.getMessage());
             }
             
-            try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_Perfiles de producción_" + oportunidad[0].getOportunidad() + ".xlsx")) {
-                        productionWorkbook.write(fileOut);
+            // try (FileOutputStream fileOut = new FileOutputStream(
+            //     evaluationId + "_Perfiles de producción_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+            //             productionWorkbook.write(fileOut);
 
-            } catch (IOException e) {
-                System.err.println("Error writing Excel file: " + e.getMessage());
-            }
+            // } catch (IOException e) {
+            //     System.err.println("Error writing Excel file: " + e.getMessage());
+            // }
             
-            
-            cleanupResources();
+            // cleanupResources();
 
             return ResponseEntity.ok(responseData);
             
         } catch (Exception e) {
             System.err.println("Critical error in simulation: " + e.getMessage());
             e.printStackTrace();
-            cleanupResources();
+            // cleanupResources();
+            // ((SXSSFWorkbook) productionWorkbook).dispose();
+            // ((SXSSFWorkbook) workbook).dispose();
             return ResponseEntity.internalServerError().build();
         } finally {
-            // Close workbook in finally block
             if (workbook != null) {
                 try {
                     workbook.close();
@@ -524,6 +525,7 @@ public class MonteCarloSimulationMultiObject {
         for (List<Double> randomList : randomNumbers) {
             randomList.clear();
         }
+        
     }
     private String[] determineYearRange() {
         Set<String> yearSet = new HashSet<>();
