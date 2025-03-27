@@ -23,4 +23,4 @@ COPY --from=build /build/target/oportexp-montecarlo.jar oportexp-montecarlo.jar
 EXPOSE 8085
 
 # Run the application
-ENTRYPOINT ["java", "-Xmx1g", "-jar", "oportexp-montecarlo.jar"]
+ENTRYPOINT ["java", "-jar", "oportexp-montecarlo.jar"]
