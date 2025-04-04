@@ -93,12 +93,12 @@ public class SimulacionMicros {
         this.restTemplate = restTemplate;
     }
 
-    public Object ejecutarSimulacion() {
+    public Object ejecutarSimulacion(int productionProfileFlag) {
         try {
 
             String url = String.format(
                     "http://" + economicEvaHost + ":" + economicEvaPort +
-                    "/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
+                    "/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
                     idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga,
                     estacionCompresion,
                     ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
@@ -106,9 +106,9 @@ public class SimulacionMicros {
                     triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds,
                     triangularInversionRisers, triangularInversionSistemasDeControl,
                     triangularInversionCubiertaDeProces,
-                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta);
+                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, productionProfileFlag);
 
-            // Llamada HTTP GET sin un modelo específico
+            
             Object response = restTemplate.getForObject(url, Object.class);
 
             return response;

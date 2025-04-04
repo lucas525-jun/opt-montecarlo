@@ -87,18 +87,11 @@ public class MonteCarloSimulationMultiObject {
             "Sistemas de control", "Cubierta Proces", "Buquetaquecompra", "buquetaQuerenta"
     };
 
-    // Add these data structures at the class level
-    private List<Map<String, Object>> pceSheetData = Collections.synchronizedList(new ArrayList<>());
-    private List<Map<String, Object>> aceiteSheetData = Collections.synchronizedList(new ArrayList<>());
-    private List<Map<String, Object>> gasSheetData = Collections.synchronizedList(new ArrayList<>());
-    private List<Map<String, Object>> condensadoSheetData = Collections.synchronizedList(new ArrayList<>());
     private final int HEADERS_SIZE = headers.length;
 
     private static final class Indices {
         static final int ALEATORIO_RECURSO = 0;
-        static final int ALEATORIO_GASTO = 1;
         static final int ALEATORIO_DECLINACION = 2;
-        static final int ALEATORIO_AREA = 3;
         static final int ALEATORIO_DES_INFRA = 4;
         static final int ALEATORIO_DES_PER = 5;
         static final int ALEATORIO_DES_TER = 6;
@@ -139,11 +132,11 @@ public class MonteCarloSimulationMultiObject {
 
 
     public MonteCarloSimulationMultiObject(String version, int[] idOportunidadObjetivo, String economicEvaHost,
-            String economicEvaPort, int iterations, int pgValue, String evaluationId) {
+            String economicEvaPort, int iterations, boolean iterationCheck, boolean profileCheck, String evaluationId) {
         validateInputs(version, idOportunidadObjetivo);
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo.clone();
-        this.pgValue = pgValue;
+        this.pgValue = profileCheck == true ? 1 : 0;
         this.cantidadIteraciones = iterations;
         this.evaluationId = evaluationId;
         this.numOportunidades = idOportunidadObjetivo.length;
@@ -379,7 +372,7 @@ public class MonteCarloSimulationMultiObject {
                     
                     simulateOpportunities(finalI, excelRowData);
                     if (paramsArray != null) {
-                        resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray);
+                        resultados[finalI] = simulacionMicrosMulti.ejecutarSimulacionMulti(paramsArray, this.pgValue);
                         synchronized (resultadosQueue) {
                             resultadosQueue.add(resultados[finalI]);
                         }
@@ -517,7 +510,7 @@ public class MonteCarloSimulationMultiObject {
             
             // Save montecarlo workbook to file
             try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_MonteCarloSimulationMultiObject_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                evaluationId + "_SimulacionMonteCarlo_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                 workbook.write(fileOut);
 
             } catch (IOException e) {
@@ -525,7 +518,7 @@ public class MonteCarloSimulationMultiObject {
             }
             
             try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_Perfiles de producción_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                evaluationId + "_Perfiles de producción_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
                         productionWorkbook.write(fileOut);
 
             } catch (IOException e) {
@@ -914,7 +907,6 @@ public class MonteCarloSimulationMultiObject {
                     investments[objectivoIndex].triangularInversionBuqueTanqueCompra);
             params.setTriangularInversionBuqueTanqueRenta(
                     investments[objectivoIndex].triangularInversionBuqueTanqueRenta);
-
             ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> paramsMap;
             synchronized (simulationParametersMatrix) {
                 paramsMap = simulationParametersMatrix.computeIfAbsent(iterationNumber, k -> new ConcurrentHashMap<>());
