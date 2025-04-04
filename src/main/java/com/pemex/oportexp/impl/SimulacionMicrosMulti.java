@@ -60,7 +60,7 @@ public class SimulacionMicrosMulti {
     }
 
     public Object ejecutarSimulacionMulti(
-            ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> opportunityParameters) {
+            ConcurrentHashMap<Integer, SimulacionMicrosMulti.SimulationParameters> opportunityParameters, int productionProfileFlag) {
         List<Object> resultados = new ArrayList<>();
         if (opportunityParameters == null || opportunityParameters.isEmpty()) {
             System.err.println("No simulation parameters provided");
@@ -82,7 +82,7 @@ public class SimulacionMicrosMulti {
                 return opportunityParamsList;
             }).collect(Collectors.toList());
 
-            return executeWithRetry(parameterList, 3);
+            return executeWithRetry(parameterList, productionProfileFlag, 3);
         } catch (Exception e) {
             System.err.println("Error in simulation execution: " + e.getMessage());
             e.printStackTrace();
@@ -90,26 +90,47 @@ public class SimulacionMicrosMulti {
         }
     }
 
-    private Object executeWithRetry(List<List<Object>> parameterList, int retries) throws InterruptedException {
+    private Object executeWithRetry(List<List<Object>> parameterList, int productionProfileFlag, int retries) throws InterruptedException {
         int attempt = 0;
+        int alway = 0;
         while (attempt < retries) {
-            try {
-
-                return restTemplate.postForObject(
-                        "http://" + economicEvaHost + ":" + economicEvaPort + "/api/v1/getEvaluacionEconomicaMulti",
-                        parameterList, Object.class);
-
-            } catch (Exception e) {
-                attempt++;
-                System.err.println("API call failed (Attempt " + attempt + "/" + retries + "): " + e.getMessage());
-
-                if (attempt == retries) {
-                    System.err.println("Max retries reached. Failing request.");
-                    throw new RuntimeException("Failed to execute simulation after " + retries + " attempts", e);
+            if(productionProfileFlag != 1) {
+                try {
+    
+                    return restTemplate.postForObject(
+                            "http://" + economicEvaHost + ":" + economicEvaPort + "/api/v1/getEvaluacionEconomicaMulti",
+                            parameterList, Object.class);
+    
+                } catch (Exception e) {
+                    attempt++;
+                    System.err.println("API call failed (Attempt " + attempt + "/" + retries + "): " + e.getMessage());
+    
+                    if (attempt == retries) {
+                        System.err.println("Max retries reached. Failing request.");
+                        throw new RuntimeException("Failed to execute simulation after " + retries + " attempts", e);
+                    }
+    
+                    int delay = (int) Math.pow(2, attempt) * 1000;
+                    Thread.sleep(delay);
                 }
-
-                int delay = (int) Math.pow(2, attempt) * 1000;
-                Thread.sleep(delay);
+            } else {
+                try {
+                    return restTemplate.postForObject(
+                            "http://" + economicEvaHost + ":" + economicEvaPort + "/api/v1/getEvaluacionPerfilDeProduccion",
+                            parameterList, Object.class);
+    
+                } catch (Exception e) {
+                    attempt++;
+                    System.err.println("API call failed (Attempt " + attempt + "/" + retries + "): " + e.getMessage());
+    
+                    if (attempt == retries) {
+                        System.err.println("Max retries reached. Failing request.");
+                        throw new RuntimeException("Failed to execute simulation after " + retries + " attempts", e);
+                    }
+    
+                    int delay = (int) Math.pow(2, attempt) * 1000;
+                    Thread.sleep(delay);
+                }
             }
         }
         return null;

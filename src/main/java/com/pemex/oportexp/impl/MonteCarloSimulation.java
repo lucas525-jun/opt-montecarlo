@@ -54,11 +54,11 @@ public class MonteCarloSimulation {
         this.oportunidad = oportunidad;
     }
 
-    public MonteCarloSimulation(String version, int idOportunidadObjetivo, int iterations, int pgValue, String evaluationId) {
+    public MonteCarloSimulation(String version, int idOportunidadObjetivo, int iterations, boolean iterationCheck, boolean profileCheck, String evaluationId) {
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
         this.iterations = iterations;
-        this.pgValue = pgValue;
+        this.pgValue = profileCheck == true ? 1 : 0;
         this.evaluationId = evaluationId;
     }
 
@@ -80,9 +80,7 @@ public class MonteCarloSimulation {
         int cantidadIteraciones = iterations;
 
         int indexAleatorioRecurso = 0;
-        int indexAleatorioGasto = 1;
         int indexAleatorioDeclinacion = 2;
-        int indexAleatorioArea = 3;
         int indexAleatorioDesInfra = 4;
         int indexAleatorioDesPer = 5;
         int indexAleatorioDesTer = 6;
@@ -463,7 +461,7 @@ public class MonteCarloSimulation {
                     simulacionMicros.setEconomicEvaHost(economicEvaHost);
                     simulacionMicros.setEconomicEvaPort(economicEvaPort);
 
-                    resultado = simulacionMicros.ejecutarSimulacion();
+                    resultado = simulacionMicros.ejecutarSimulacion(this.pgValue);
 
                     resultadosQueue.add(resultado);
 
@@ -499,7 +497,7 @@ public class MonteCarloSimulation {
 
                     simulacionMicros.setEconomicEvaHost(economicEvaHost);
                     simulacionMicros.setEconomicEvaPort(economicEvaPort);
-                    resultado = simulacionMicros.ejecutarSimulacion();
+                    resultado = simulacionMicros.ejecutarSimulacion(this.pgValue);
 
                     resultadosQueue.add(resultado);
                     
@@ -624,7 +622,7 @@ public class MonteCarloSimulation {
             }
         }
         try (FileOutputStream fileOut = new FileOutputStream(
-            evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + ".xlsx")) {
+            evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
                     productionWorkbook.write(fileOut);
 
         } catch (IOException e) {
