@@ -58,7 +58,8 @@ public class MonteCarloSimulationController {
             @RequestParam("IdOportunidad") int idOportunidad,
             @RequestParam("evaluationType") String evaluationType,
             @RequestParam("iterationsNumber") int iterations,
-            @RequestParam("pgValue") int pgValue,
+            @RequestParam("iterationCheck") Boolean iterationCheck,
+            @RequestParam("profileCheck") Boolean profileCheck,
             @RequestParam("evaluationId") String evaluationId) {
 
         List<Map<String, Object>> multiObjetivos;
@@ -75,14 +76,21 @@ public class MonteCarloSimulationController {
                             version,
                             idOportunidadObjetivoArray, 
                             iterations, 
-                            pgValue,
+                            iterationCheck,
+                            profileCheck,
                             evaluationId);
             resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
         } else {
-            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, pgValue, evaluationId);
+            MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, iterationCheck, profileCheck, evaluationId);
             resultados = monteCarloSimulation.runSimulation().getBody();
 
         }
+        if(profileCheck == true) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_PLAIN);
+            return new ResponseEntity<>("Profile check completed successfully", headers, HttpStatus.OK);
+
+        } 
         try {
             String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort + "/generate-excel";
 
@@ -124,18 +132,29 @@ public class MonteCarloSimulationController {
     }
     
     /**
-     * Collects all files with names starting with evaluationId, compresses them into a ZIP file,
+     * Collects files with names starting with evaluationId, compresses them into a ZIP file,
      * deletes the source files, and returns the ZIP to the frontend.
+     * When iterationCheck is true, only Monte Carlo simulation files are compressed.
+     * When profileCheck is true, only profile files are compressed.
+     * When neither is true, no files are compressed.
      *
      * @param evaluationId Unique identifier for the evaluation session
      * @param versionName Version name from the simulation
-     * @return ZIP file containing all Monte Carlo simulation files for the given evaluation
+     * @param iterationCheck Flag to indicate if Monte Carlo simulation files should be included
+     * @param profileCheck Flag to indicate if profile files should be included
+     * @return ZIP file containing the selected files for the given evaluation
      */
     @GetMapping("/downloadexcel")
     public ResponseEntity<Resource> downloadMonteCarloZip(
         @RequestParam("evaluationId") String evaluationId,
-        @RequestParam("versionName") String versionName) {
+        @RequestParam("versionName") String versionName,
+        @RequestParam("iterationCheck") Boolean iterationCheck,
+        @RequestParam("profileCheck") Boolean profileCheck) {
 
+        // If neither iteration check nor profile check is true, return no content
+        if (!iterationCheck && !profileCheck) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+        }
         
         try {
             // Use the fixed directory path
@@ -144,8 +163,20 @@ public class MonteCarloSimulationController {
 
             List<Path> filesToZip = Files.list(directoryPath)
                 .filter(path -> {
-                    boolean matches = path.getFileName().toString().contains(evaluationId);
-                    return matches;
+                    String filename = path.getFileName().toString();
+                    boolean containsEvaluationId = filename.contains(evaluationId);
+                    
+                    if (!containsEvaluationId) {
+                        return false;
+                    }
+                    
+                    if (iterationCheck) {
+                        return filename.contains("SimulacionMonteCarlo");
+                    } else if (profileCheck) {
+                        return filename.contains("Perfiles de producción");
+                    }
+                    
+                    return false;
                 })
                 .collect(Collectors.toList());
 
@@ -163,7 +194,7 @@ public class MonteCarloSimulationController {
                 zos.putNextEntry(zipEntry);
                 
                 try (FileInputStream fis = new FileInputStream(file)) {
-                    byte[] buffer = new byte[8192]; // Larger buffer for performance
+                    byte[] buffer = new byte[8192];
                     int length;
                     while ((length = fis.read(buffer)) > 0) {
                         zos.write(buffer, 0, length);
@@ -181,7 +212,6 @@ public class MonteCarloSimulationController {
                     Files.delete(filePath);
                 } catch (IOException e) {
                     System.err.println("Could not delete file: " + filePath.getFileName() + ": " + e.getMessage());
-                    // Continue with the process even if deletion fails
                 }
             }
             
