@@ -589,10 +589,8 @@ public class MonteCarloSimulation {
             cell.setCellValue(grandTotalCondensado.get() / cantidadIteraciones);
         }
 
-        double kilometrajeCalculado = calcularReporte804(kilometraje, oportunidad.getPlanDesarrollo(), oportunidad.getPg());
         List<Double> reporte804 = new ArrayList<>();
         reporte804.add(kilometraje);
-        reporte804.add(kilometrajeCalculado);
         List<Double> reporte805 = escaleraLimEconomicos(limitesEconomicosRepetidos, mediaTruncada, cantidadIteraciones);
 
 
@@ -908,52 +906,6 @@ public class MonteCarloSimulation {
         }
 
         return reporte805;
-    }
-
-    private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
-        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1);
-        
-        // Check if the number contains a fraction
-        if (number.contains("/")) {
-            // Parse as a fraction
-            String[] parts = number.split("/");
-            if (parts.length == 2) {
-                try {
-                    double numerator = Double.parseDouble(parts[0]);
-                    double denominator = Double.parseDouble(parts[1]);
-                    // Use the result of the fraction for your logic
-                    double result = numerator / denominator;
-                    
-                    // Adjust the logic to work with decimal values instead of integers
-                    if (result <= 1) {
-                        return kilometraje * (1 - pg);
-                    } else if (result <= 2) {
-                        return kilometraje;
-                    } else {
-                        return kilometraje * pg;
-                    }
-                } catch (NumberFormatException e) {
-                    System.err.println("Error parsing fraction: " + number);
-                    return kilometraje; // Default fallback
-                }
-            }
-        }
-        
-        // Original integer parsing logic
-        try {
-            int result = Integer.parseInt(number);
-            if (result == 1) {
-                return kilometraje * (1 - pg);
-            } else if (result == 2) {
-                return kilometraje;
-            } else if (result >= 3) {
-                return kilometraje * pg;
-            }
-        } catch (NumberFormatException e) {
-            System.err.println("Error parsing development plan number: " + number);
-        }
-        
-        return kilometraje; // Default fallback
     }
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto) {
