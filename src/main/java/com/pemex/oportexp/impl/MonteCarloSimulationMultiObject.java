@@ -479,11 +479,6 @@ public class MonteCarloSimulationMultiObject {
             List<Double> reporte804 = new ArrayList<>();
             int deepestObjectIndex = 0;
             double kilometrajeOfLastObject = kilometraje[deepestObjectIndex];
-            double kilometrajeCalculado = calcularReporte804(
-                kilometrajeOfLastObject, 
-                oportunidad[deepestObjectIndex].getPlanDesarrollo(), 
-                oportunidad[deepestObjectIndex].getPg()
-            );
             
             // Calculate for each opportunity
             for (int i = 0; i < numOportunidades; i++) {
@@ -494,7 +489,6 @@ public class MonteCarloSimulationMultiObject {
                 );
             }
             reporte804.add(kilometrajeOfLastObject);
-            reporte804.add(kilometrajeCalculado);
             
             List<Double> reporte805 = mergeReporte805(reporteArray805);
             
@@ -1257,53 +1251,6 @@ public class MonteCarloSimulationMultiObject {
 
         return reporte805;
     }
-
-    private double calcularReporte804(double kilometraje, String planDesarrollo, double pg) {
-        String number = planDesarrollo.substring(planDesarrollo.lastIndexOf(' ') + 1);
-        
-        // Check if the number contains a fraction
-        if (number.contains("/")) {
-            // Parse as a fraction
-            String[] parts = number.split("/");
-            if (parts.length == 2) {
-                try {
-                    double numerator = Double.parseDouble(parts[0]);
-                    double denominator = Double.parseDouble(parts[1]);
-                    // Use the result of the fraction for your logic
-                    double result = numerator / denominator;
-                    
-                    // Adjust the logic to work with decimal values instead of integers
-                    if (result <= 1) {
-                        return kilometraje * (1 - pg);
-                    } else if (result <= 2) {
-                        return kilometraje;
-                    } else {
-                        return kilometraje * pg;
-                    }
-                } catch (NumberFormatException e) {
-                    System.err.println("Error parsing fraction: " + number);
-                    return kilometraje; // Default fallback
-                }
-            }
-        }
-        
-        // Original integer parsing logic
-        try {
-            int result = Integer.parseInt(number);
-            if (result == 1) {
-                return kilometraje * (1 - pg);
-            } else if (result == 2) {
-                return kilometraje;
-            } else if (result >= 3) {
-                return kilometraje * pg;
-            }
-        } catch (NumberFormatException e) {
-            System.err.println("Error parsing development plan number: " + number);
-        }
-        
-        return kilometraje; // Default fallback
-    }
-
 
     public double calcularGastoInicial(double PCE, double aleatorioGasto, int objectivoIndex) {
         if (objectivoIndex < 0 || objectivoIndex >= numOportunidades) {
