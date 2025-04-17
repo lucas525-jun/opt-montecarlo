@@ -31,6 +31,8 @@ public class MonteCarloSimulation {
     private final int pgValue;
     private final int idOportunidadObjetivo;
     private final String evaluationId;
+    private Integer iterationCheck;
+
     private Oportunidad oportunidad;
     private final ThreadLocalRandom random = ThreadLocalRandom.current();
 
@@ -58,6 +60,7 @@ public class MonteCarloSimulation {
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo;
         this.iterations = iterations;
+        this.iterationCheck = iterationCheck ? 1 : 0;
         this.pgValue = profileCheck == true ? 1 : 0;
         this.evaluationId = evaluationId;
     }
@@ -217,10 +220,9 @@ public class MonteCarloSimulation {
         Queue<Object> resultadosQueue = new ConcurrentLinkedQueue<>();
 
         List<Map<Integer, Object>> excelRowBuffer = Collections.synchronizedList(new ArrayList<>());
-
+        Map<Integer, Object> excelRowData = new HashMap<>();
         try {
             customThreadPool.submit(() -> IntStream.range(0, cantidadIteraciones).parallel().forEach(i -> {
-                Map<Integer, Object> excelRowData = new HashMap<>();
                 int baseIndex = i * numberOfVariables; 
 
                 ResultadoSimulacion ResultadoSimulacion = new ResultadoSimulacion();
@@ -605,31 +607,35 @@ public class MonteCarloSimulation {
 
         excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
 
-        // Guardar resultados en el archivo Excel
-        try (
-                FileOutputStream fileOut = new FileOutputStream(
-                    evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
-            workbook.write(fileOut);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                workbook.close();
+        if(this.pgValue != 1) {
+            try (
+                    FileOutputStream fileOut = new FileOutputStream(
+                        evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                workbook.write(fileOut);
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    workbook.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-        }
-        try (FileOutputStream fileOut = new FileOutputStream(
-            evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
-                    productionWorkbook.write(fileOut);
-
-        } catch (IOException e) {
-            System.err.println("Error writing Excel file: " + e.getMessage());
-        } finally {
-            try {
-                productionWorkbook.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        } else {
+            if(this.iterationCheck == 1) {
+                try (FileOutputStream fileOut = new FileOutputStream(
+                    evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                            productionWorkbook.write(fileOut);
+        
+                } catch (IOException e) {
+                    System.err.println("Error writing Excel file: " + e.getMessage());
+                } finally {
+                    try {
+                        productionWorkbook.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
 

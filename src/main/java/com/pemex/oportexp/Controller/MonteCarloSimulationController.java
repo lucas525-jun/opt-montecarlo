@@ -61,7 +61,7 @@ public class MonteCarloSimulationController {
             @RequestParam("iterationCheck") Boolean iterationCheck,
             @RequestParam("profileCheck") Boolean profileCheck,
             @RequestParam("evaluationId") String evaluationId) {
-
+        String multiType = "object";
         List<Map<String, Object>> multiObjetivos;
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
         List<Object> resultados;
@@ -80,6 +80,7 @@ public class MonteCarloSimulationController {
                             profileCheck,
                             evaluationId);
             resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
+            multiType = "opportunity";
         } else {
             MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, iterationCheck, profileCheck, evaluationId);
             resultados = monteCarloSimulation.runSimulation().getBody();
@@ -101,7 +102,7 @@ public class MonteCarloSimulationController {
             // Crea la solicitud HTTP
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("resultados", resultados);
-            requestBody.put("evaluationType", evaluationType);
+            requestBody.put("evaluationType", multiType);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Llama al servidor Node.js
