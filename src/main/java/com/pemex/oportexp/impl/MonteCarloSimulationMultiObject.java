@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.concurrent.atomic.AtomicReference;
 
+
 public class MonteCarloSimulationMultiObject {
     @Setter
     private MonteCarloDAO monteCarloDAO;
@@ -70,6 +71,7 @@ public class MonteCarloSimulationMultiObject {
     private Sheet aceiteSheet;
     private Sheet gasSheet;
     private Sheet condensadoSheet;  
+    private final int iterationCheck;
 
     List<Object> responseData = Collections.synchronizedList(new ArrayList<>());
 
@@ -137,6 +139,7 @@ public class MonteCarloSimulationMultiObject {
         this.version = version;
         this.idOportunidadObjetivo = idOportunidadObjetivo.clone();
         this.pgValue = profileCheck == true ? 1 : 0;
+        this.iterationCheck = iterationCheck == true ? 1 : 0;
         this.cantidadIteraciones = iterations;
         this.evaluationId = evaluationId;
         this.numOportunidades = idOportunidadObjetivo.length;
@@ -308,7 +311,7 @@ public class MonteCarloSimulationMultiObject {
                 aleatorio);
     }
 
-    public ResponseEntity<List<Object>> runSimulation() {
+    public String runSimulation() {
        
         iterationNumber.set(1);
         
@@ -421,8 +424,6 @@ public class MonteCarloSimulationMultiObject {
                     return null;
                 }));
             }
-
-
             
             for (Future<Void> future : futures) {
                 try {
@@ -434,7 +435,7 @@ public class MonteCarloSimulationMultiObject {
             
             try {
                 executor.shutdown();
-                if (!executor.awaitTermination(300, TimeUnit.SECONDS)) { // Increased from 60 to 300 seconds
+                if (!executor.awaitTermination(300, TimeUnit.SECONDS)) { 
                     System.err.println("Thread pool did not terminate in time - forcing shutdown");
                     List<Runnable> unfinishedTasks = executor.shutdownNow();
                     System.err.println("Cancelled " + unfinishedTasks.size() + " tasks");
@@ -445,7 +446,6 @@ public class MonteCarloSimulationMultiObject {
                 Thread.currentThread().interrupt();
             }
 
-           
             synchronized (pceSheet) {
                 Row row = pceSheet.getRow(0);
                 if (row == null) row = pceSheet.createRow(0);
@@ -500,32 +500,42 @@ public class MonteCarloSimulationMultiObject {
                 primerElemento.put("reporte805", reporte805);
             }
             
-            writeResultsToExcel(sheet);
-            
-            // Save montecarlo workbook to file
-            try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_SimulacionMonteCarlo_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
-                workbook.write(fileOut);
+            if (this.pgValue == 1) {
+                
+                try (FileOutputStream fileOut = new FileOutputStream(
+                    evaluationId + "_Perfiles de producción_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                            productionWorkbook.write(fileOut);
+    
+                } catch (IOException e) {
+                    System.err.println("Error writing Excel file: " + e.getMessage());
+                }
+            } else if (this.iterationCheck == 1) {
+                writeResultsToExcel(sheet);
+                try (FileOutputStream fileOut = new FileOutputStream(
+                    evaluationId + "_SimulacionMonteCarlo_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                    workbook.write(fileOut);
 
-            } catch (IOException e) {
-                System.err.println("Error writing Excel file: " + e.getMessage());
+                } catch (IOException e) {
+                    System.err.println("Error writing Excel file: " + e.getMessage());
+                }
             }
-            
-            try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_Perfiles de producción_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
-                        productionWorkbook.write(fileOut);
 
-            } catch (IOException e) {
-                System.err.println("Error writing Excel file: " + e.getMessage());
-            }
+            List<Object> filteredResultados = responseData.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+            String jsonFilePath = "../oportexp-genexcel/result_json_" + evaluationId + "_" + 
+                          oportunidad[0].getOportunidad()  + "_" + 
+                          Thread.currentThread().getName() + ".json";
             
-
-            return ResponseEntity.ok(responseData);
+            saveJsonFile(filteredResultados, jsonFilePath);
+            
+            return jsonFilePath;
             
         } catch (Exception e) {
             System.err.println("Critical error in simulation: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
+            return "";
         } finally {
             try {
                 workbook.close();
@@ -537,6 +547,15 @@ public class MonteCarloSimulationMultiObject {
             } catch (IOException e) {
                 System.err.println("Error closing production workbook: " + e.getMessage());
             }
+        }
+    }
+
+    private void saveJsonFile(List<Object> data, String fileName) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try (FileOutputStream fos = new FileOutputStream(fileName)) {
+            objectMapper.writeValue(fos, data);
+        } catch (IOException e) {
+            System.err.println("Error saving JSON file: " + e.getMessage());
         }
     }
     
@@ -797,8 +816,9 @@ public class MonteCarloSimulationMultiObject {
                 excelRowData.put(HEADERS_SIZE * objectivoIndex + 1, "Error: " + e.getMessage());
             }
         }
-        
-        excelRowBuffers.put(iterationNumber, excelRowData);
+        if(this.iterationCheck == 1) {
+            excelRowBuffers.put(iterationNumber, excelRowData);
+        }
     }
 
     private Oportunidad getOportunidad(int index) {
