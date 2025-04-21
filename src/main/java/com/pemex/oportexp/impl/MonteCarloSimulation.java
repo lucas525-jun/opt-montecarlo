@@ -646,10 +646,12 @@ public class MonteCarloSimulation {
         List<Object> filteredResultados = resultados.stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        
-        String jsonFilePath = "../oportexp-genexcel/result_json_" + evaluationId + "_" + 
+
+        String sharedFolder = "/evaluation-results/";
+        String jsonFileName = "result_json_" + evaluationId + "_" + 
                       oportunidad.getOportunidad() + "_" + idOportunidadObjetivo + "_" + 
                       Thread.currentThread().getName() + ".json";
+        String jsonFilePath = sharedFolder + jsonFileName;
         
         saveJsonFile(filteredResultados, jsonFilePath);
         resultadosQueue.clear();
@@ -657,7 +659,7 @@ public class MonteCarloSimulation {
         resultados.clear();
         resultados = null;
        
-        return jsonFilePath;
+        return jsonFileName;
 
     }
     
