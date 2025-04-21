@@ -523,14 +523,16 @@ public class MonteCarloSimulationMultiObject {
             List<Object> filteredResultados = responseData.stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        
-            String jsonFilePath = "../oportexp-genexcel/result_json_" + evaluationId + "_" + 
+
+            String sharedFolder = "/evaluation-results/";
+            String jsonFileName = "result_json_" + evaluationId + "_" + 
                           oportunidad[0].getOportunidad()  + "_" + 
                           Thread.currentThread().getName() + ".json";
+            String jsonFilePath = sharedFolder + jsonFileName;
             
             saveJsonFile(filteredResultados, jsonFilePath);
             
-            return jsonFilePath;
+            return jsonFileName;
             
         } catch (Exception e) {
             System.err.println("Critical error in simulation: " + e.getMessage());
