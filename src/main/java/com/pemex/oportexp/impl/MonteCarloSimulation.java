@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 public class MonteCarloSimulation {
     @Setter
@@ -76,7 +78,7 @@ public class MonteCarloSimulation {
     double triangularInversionCubiertaDeProces, triangularInversionBuqueTanqueCompra,
             triangularInversionBuqueTanqueRenta;
 
-    public ResponseEntity<List<Object>> runSimulation() {
+    public String runSimulation() {
         Oportunidad oportunidad = monteCarloDAO.executeQuery(version, idOportunidadObjetivo);
         setOportunidad(oportunidad);
 
@@ -466,7 +468,6 @@ public class MonteCarloSimulation {
                     resultado = simulacionMicros.ejecutarSimulacion(this.pgValue);
 
                     resultadosQueue.add(resultado);
-
                 } else {
 
                     excelRowData.put(1, "Fracaso");
@@ -502,10 +503,12 @@ public class MonteCarloSimulation {
                     resultado = simulacionMicros.ejecutarSimulacion(this.pgValue);
 
                     resultadosQueue.add(resultado);
-                    
                 }
                 final int iteration = i;
-                excelRowBuffer.add(excelRowData);
+
+                if(this.iterationCheck == 1) {
+                    excelRowBuffer.add(excelRowData);
+                }
 
                 List<Map<String, Object>> resultsList;
                 if (resultado instanceof Map) {
@@ -602,36 +605,37 @@ public class MonteCarloSimulation {
             primerElemento.put("reporte804", reporte804);
             primerElemento.put("reporte805", reporte805);
         }
-
-        Collections.sort(excelRowBuffer, Comparator.comparingInt(row -> ((Number) row.get(0)).intValue()));
-
-        excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
-
-        if(this.pgValue != 1) {
-            try (
-                    FileOutputStream fileOut = new FileOutputStream(
-                        evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
-                workbook.write(fileOut);
+        
+        
+        if(this.pgValue == 1) {
+            try (FileOutputStream fileOut = new FileOutputStream(
+                evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                        productionWorkbook.write(fileOut);
+    
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error writing Excel file: " + e.getMessage());
             } finally {
                 try {
-                    workbook.close();
+                    productionWorkbook.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         } else {
+            
             if(this.iterationCheck == 1) {
-                try (FileOutputStream fileOut = new FileOutputStream(
-                    evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
-                            productionWorkbook.write(fileOut);
-        
+                
+                Collections.sort(excelRowBuffer, Comparator.comparingInt(row -> ((Number) row.get(0)).intValue()));
+                excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
+                try (
+                    FileOutputStream fileOut = new FileOutputStream(
+                            evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                    workbook.write(fileOut);
                 } catch (IOException e) {
-                    System.err.println("Error writing Excel file: " + e.getMessage());
+                    e.printStackTrace();
                 } finally {
                     try {
-                        productionWorkbook.close();
+                        workbook.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -639,11 +643,33 @@ public class MonteCarloSimulation {
             }
         }
 
+        List<Object> filteredResultados = resultados.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+        String jsonFilePath = "../oportexp-genexcel/result_json_" + evaluationId + "_" + 
+                      oportunidad.getOportunidad() + "_" + idOportunidadObjetivo + "_" + 
+                      Thread.currentThread().getName() + ".json";
+        
+        saveJsonFile(filteredResultados, jsonFilePath);
+        resultadosQueue.clear();
+        excelRowBuffer.clear();
+        resultados.clear();
+        resultados = null;
        
-        return ResponseEntity.ok(resultados);
+        return jsonFilePath;
 
     }
     
+    private void saveJsonFile(List<Object> data, String fileName) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try (FileOutputStream fos = new FileOutputStream(fileName)) {
+            objectMapper.writeValue(fos, data);
+        } catch (IOException e) {
+            System.err.println("Error saving JSON file: " + e.getMessage());
+        }
+    }
+
     private int[] extractYearRange(Map<String, Object> evaluationResult) {
         int[] yearRange = new int[2];
         

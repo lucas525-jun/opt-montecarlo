@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriUtils;
+
 import com.pemex.oportexp.impl.MonteCarloDAO;
 
 import org.springframework.core.io.ByteArrayResource;
@@ -25,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -50,7 +51,11 @@ public class MonteCarloSimulationController {
     @Value("${OPORTEXT_GENEXCEL_POST:3000}")
     private String genExcelPort;
 
-
+    public long showMemory () {
+        Runtime rt = Runtime.getRuntime();
+        long usedMB = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
+        return usedMB;
+    }
     @GetMapping("/run")
     public ResponseEntity<?> runSimulation(
             @RequestParam("Version") String version,
@@ -61,10 +66,10 @@ public class MonteCarloSimulationController {
             @RequestParam("iterationCheck") Boolean iterationCheck,
             @RequestParam("profileCheck") Boolean profileCheck,
             @RequestParam("evaluationId") String evaluationId) {
-        String multiType = "object";
+        Boolean multiType = false;
         List<Map<String, Object>> multiObjetivos;
         multiObjetivos = monteCarloDAO.getMultiOjbectivo(idOportunidad);
-        List<Object> resultados;
+        String jsonFilePath;
         if (evaluationType.equals("opportunity") && multiObjetivos.size() > 1) {
             System.err.println("Multi Object started.");
             int[] idOportunidadObjetivoArray = new int[multiObjetivos.size()];
@@ -79,11 +84,11 @@ public class MonteCarloSimulationController {
                             iterationCheck,
                             profileCheck,
                             evaluationId);
-            resultados = monteCarloSimulationMultiObject.runSimulation().getBody();
-            multiType = "opportunity";
+            jsonFilePath = monteCarloSimulationMultiObject.runSimulation();
+            multiType = true;
         } else {
             MonteCarloSimulation monteCarloSimulation = monteCarloService.createSimulation(version, idOportunidadObjetivo, iterations, iterationCheck, profileCheck, evaluationId);
-            resultados = monteCarloSimulation.runSimulation().getBody();
+            jsonFilePath = monteCarloSimulation.runSimulation();
 
         }
         if(profileCheck == true) {
@@ -93,24 +98,22 @@ public class MonteCarloSimulationController {
 
         } 
         try {
-            String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort + "/generate-excel";
+            String encodedJsonPath = UriUtils.encode(jsonFilePath, "UTF-8");
+           
+            String nodeUrl = "http://" + genExcelHost + ":" + genExcelPort +
+                 "/generate-excel?filePath=" + encodedJsonPath + 
+                 "&evaluationType=" + multiType;
 
-            // Configura los headers
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM)); 
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            // Crea la solicitud HTTP
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("resultados", resultados);
-            requestBody.put("evaluationType", multiType);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-            // Llama al servidor Node.js
             ResponseEntity<byte[]> response = restTemplate.exchange(
-                    nodeUrl,
-                    HttpMethod.POST,
-                    request,
-                    byte[].class);
+                nodeUrl,
+                HttpMethod.GET,
+                entity,
+                byte[].class
+            );
 
             // Verifica si la respuesta es válida
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
@@ -152,7 +155,6 @@ public class MonteCarloSimulationController {
         @RequestParam("iterationCheck") Boolean iterationCheck,
         @RequestParam("profileCheck") Boolean profileCheck) {
 
-        // If neither iteration check nor profile check is true, return no content
         if (!iterationCheck && !profileCheck) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
         }
