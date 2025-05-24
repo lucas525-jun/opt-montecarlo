@@ -503,7 +503,7 @@ public class MonteCarloSimulationMultiObject {
             if (this.pgValue == 1) {
                 
                 try (FileOutputStream fileOut = new FileOutputStream(
-                    evaluationId + "_Perfiles de producción_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                    evaluationId + "_Perfiles de producción_Multi_" + oportunidad[0].getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "") + ".xlsx")) {
                             productionWorkbook.write(fileOut);
     
                 } catch (IOException e) {
@@ -512,7 +512,7 @@ public class MonteCarloSimulationMultiObject {
             } else if (this.iterationCheck == 1) {
                 writeResultsToExcel(sheet);
                 try (FileOutputStream fileOut = new FileOutputStream(
-                    evaluationId + "_SimulacionMonteCarlo_Multi_" + oportunidad[0].getOportunidad() + ".xlsx")) {
+                    evaluationId + "_SimulacionMonteCarlo_Multi_" + oportunidad[0].getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "") + ".xlsx")) {
                     workbook.write(fileOut);
 
                 } catch (IOException e) {
@@ -526,7 +526,7 @@ public class MonteCarloSimulationMultiObject {
 
             String sharedFolder = "/evaluation-results/";
             String jsonFileName = "result_json_" + evaluationId + "_" + 
-                          oportunidad[0].getOportunidad()  + "_" + 
+                          oportunidad[0].getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "")  + "_" + 
                           Thread.currentThread().getName() + ".json";
             String jsonFilePath = sharedFolder + jsonFileName;
             

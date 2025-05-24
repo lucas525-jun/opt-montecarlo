@@ -609,7 +609,7 @@ public class MonteCarloSimulation {
         
         if(this.pgValue == 1) {
             try (FileOutputStream fileOut = new FileOutputStream(
-                evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                evaluationId + "_Perfiles de producción_" + oportunidad.getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "") + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
                         productionWorkbook.write(fileOut);
     
             } catch (IOException e) {
@@ -629,7 +629,7 @@ public class MonteCarloSimulation {
                 excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
                 try (
                     FileOutputStream fileOut = new FileOutputStream(
-                            evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad() + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
+                            evaluationId + "_SimulacionMonteCarlo_" + oportunidad.getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "") + "_" + oportunidad.getIdOportunidadObjetivo() + ".xlsx")) {
                     workbook.write(fileOut);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -649,7 +649,7 @@ public class MonteCarloSimulation {
 
         String sharedFolder = "/evaluation-results/";
         String jsonFileName = "result_json_" + evaluationId + "_" + 
-                      oportunidad.getOportunidad() + "_" + idOportunidadObjetivo + "_" + 
+                      oportunidad.getOportunidad().replaceAll("[^a-zA-Z0-9.-]", "") + "_" + idOportunidadObjetivo + "_" + 
                       Thread.currentThread().getName() + ".json";
         String jsonFilePath = sharedFolder + jsonFileName;
         
