@@ -1,14 +1,12 @@
-package com.pemex.oportexp.impl;
+package com.pemex.pep.seemop.Services;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Data;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import java.util.ArrayList;
+import java.util.List;
 
-
-@Data
 public class SimulacionMicros {
-    private String economicEvaHost;
-    private String economicEvaPort;
 
     private Integer idOportunidad;
     private Integer version;
@@ -49,17 +47,18 @@ public class SimulacionMicros {
     private final RestTemplate restTemplate;
 
     public SimulacionMicros(Integer idOportunidad, Integer version, double cuota, double declinada, double pce,
-                            double area,
+            double area,
 
-                            double plataformaDesarrollo, double lineaDeDescarga, double estacionCompresion, double ducto,
-                            double bateria,
-                            double triangularExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
-                            double triangularDESInfra, double triangularDESPer, double triangularDESTer,
-                            double triangularInversionArbolesSubmarinos, double triangularInversionManifolds,
-                            double triangularInversionRisers,
-                            double triangularInversionSistemasDeControl, double triangularInversionCubiertaDeProces,
-                            double triangularInversionBuqueTanqueCompra, double triangularInversionBuqueTanqueRenta,
-                            RestTemplate restTemplate) {
+            double plataformaDesarrollo, double lineaDeDescarga, double estacionCompresion, double ducto,
+            double bateria,
+
+            double triangularExploratorioMin, double triangularExploratorioPer, double triangularExploratorioTer,
+            double triangularDESInfra, double triangularDESPer, double triangularDESTer,
+            double triangularInversionArbolesSubmarinos, double triangularInversionManifolds,
+            double triangularInversionRisers,
+            double triangularInversionSistemasDeControl, double triangularInversionCubiertaDeProces,
+            double triangularInversionBuqueTanqueCompra, double triangularInversionBuqueTanqueRenta,
+            RestTemplate restTemplate) {
 
         this.idOportunidad = idOportunidad;
         this.version = version;
@@ -93,22 +92,71 @@ public class SimulacionMicros {
         this.restTemplate = restTemplate;
     }
 
-    public Object ejecutarSimulacion(int productionProfileFlag) {
+    // Getters y Setters
+    public Integer getIdOportunidad() {
+        return idOportunidad;
+    }
+
+    public void setIdOportunidad(Integer idOportunidad) {
+        this.idOportunidad = idOportunidad;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    public double getCuota() {
+        return cuota;
+    }
+
+    public void setCuota(double cuota) {
+        this.cuota = cuota;
+    }
+
+    public double getDeclinada() {
+        return declinada;
+    }
+
+    public void setDeclinada(double declinada) {
+        this.declinada = declinada;
+    }
+
+    public double getPce() {
+        return pce;
+    }
+
+    public void setPce(double pce) {
+        this.pce = pce;
+    }
+
+    public double getArea() {
+        return area;
+    }
+
+    public void setArea(double area) {
+        this.area = area;
+    }
+
+    public RestTemplate getRestTemplate() {
+        return restTemplate;
+    }
+
+    public Object ejecutarSimulacion() {
         try {
 
             String url = String.format(
-                    "http://" + economicEvaHost + ":" + economicEvaPort +
-                    "/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
-                    idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga,
-                    estacionCompresion,
-                    ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer,
-                    triangularDESInfra, triangularDESPer,
-                    triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds,
-                    triangularInversionRisers, triangularInversionSistemasDeControl,
-                    triangularInversionCubiertaDeProces,
-                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta, productionProfileFlag);
+                    "http://localhost:8082/api/v1/getEvaluacionEconomica/%s/version/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s/%s",
+                    idOportunidad, version, cuota, declinada, pce, area, plataformaDesarrollo, lineaDeDescarga, estacionCompresion,
+                    ducto, bateria, triangularExploratorioMin, triangularExploratorioPer, triangularExploratorioTer, triangularDESInfra, triangularDESPer,
+                    triangularDESTer, triangularInversionArbolesSubmarinos, triangularInversionManifolds, triangularInversionRisers, triangularInversionSistemasDeControl, triangularInversionCubiertaDeProces,
+                    triangularInversionBuqueTanqueCompra, triangularInversionBuqueTanqueRenta
+            );
 
-            
+            // Llamada HTTP GET sin un modelo específico
             Object response = restTemplate.getForObject(url, Object.class);
 
             return response;

@@ -1,4 +1,4 @@
-package com.pemex.oportexp.impl;
+package com.pemex.pep.seemop.impl;
 
 import org.springframework.web.client.RestTemplate;
 
@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.lang.reflect.Field;
-import java.util.concurrent.TimeUnit;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

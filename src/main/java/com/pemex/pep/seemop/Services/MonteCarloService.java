@@ -1,8 +1,8 @@
-package com.pemex.oportexp.Services;
+package com.pemex.pep.seemop.Services;
 
-import com.pemex.oportexp.impl.MonteCarloDAO;
-import com.pemex.oportexp.impl.MonteCarloSimulation;
-import com.pemex.oportexp.impl.MonteCarloSimulationMultiObject;
+import com.pemex.pep.seemop.impl.MonteCarloDAO;
+import com.pemex.pep.seemop.impl.MonteCarloSimulation;
+import com.pemex.pep.seemop.impl.MonteCarloSimulationMultiObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

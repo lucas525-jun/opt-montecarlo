@@ -1,14 +1,13 @@
-package com.pemex.oportexp.impl;
+package com.pemex.pep.seemop.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.Setter;
 
-import com.pemex.oportexp.Models.Oportunidad;
+import com.pemex.pep.seemop.Models.Oportunidad;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 

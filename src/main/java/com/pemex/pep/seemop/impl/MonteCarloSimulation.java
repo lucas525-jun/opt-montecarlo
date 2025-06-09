@@ -1,12 +1,11 @@
-package com.pemex.oportexp.impl;
+package com.pemex.pep.seemop.impl;
 
 import lombok.Setter;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import com.pemex.oportexp.Models.Oportunidad;
-import com.pemex.oportexp.Models.ResultadoSimulacion;
-import org.springframework.http.ResponseEntity;
+import com.pemex.pep.seemop.Models.Oportunidad;
+import com.pemex.pep.seemop.Models.ResultadoSimulacion;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.FileOutputStream;

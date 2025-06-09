@@ -1,7 +1,7 @@
-package com.pemex.oportexp.impl;
+package com.pemex.pep.seemop.impl;
 
-import com.pemex.oportexp.Models.InversionOportunidad;
-import com.pemex.oportexp.Models.Oportunidad;
+import com.pemex.pep.seemop.Models.InversionOportunidad;
+import com.pemex.pep.seemop.Models.Oportunidad;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
