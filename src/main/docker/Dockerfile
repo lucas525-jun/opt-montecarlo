@@ -17,10 +17,10 @@ RUN mkdir /app
 WORKDIR /app
 
 # Copy the jar file from the previous stage
-COPY --from=build /build/target/oportexp-montecarlo.jar oportexp-montecarlo.jar
+COPY --from=build /build/target/seemop-montecarlo.jar seemop-montecarlo.jar
 
 # Expose the application port (default is 8080)
 EXPOSE 8085
 
 # Run the application
-ENTRYPOINT ["java", "-jar", "oportexp-montecarlo.jar"]
+ENTRYPOINT ["java", "-jar", "seemop-montecarlo.jar"]
