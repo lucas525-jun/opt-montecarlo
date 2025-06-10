@@ -1,6 +1,7 @@
 package com.pemex.pep.seemop.impl;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -22,6 +23,7 @@ import java.util.stream.IntStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
+@Slf4j
 public class MonteCarloSimulation {
     @Setter
     private MonteCarloDAO monteCarloDAO;
@@ -221,10 +223,12 @@ public class MonteCarloSimulation {
         Queue<Object> resultadosQueue = new ConcurrentLinkedQueue<>();
 
         List<Map<Integer, Object>> excelRowBuffer = Collections.synchronizedList(new ArrayList<>());
-        Map<Integer, Object> excelRowData = new HashMap<>();
+
         try {
             customThreadPool.submit(() -> IntStream.range(0, cantidadIteraciones).parallel().forEach(i -> {
-                int baseIndex = i * numberOfVariables; 
+                int baseIndex = i * numberOfVariables;
+
+                Map<Integer, Object> excelRowData = new HashMap<>();
 
                 ResultadoSimulacion ResultadoSimulacion = new ResultadoSimulacion();
                 excelRowData.put(0, i + 1); 
@@ -623,7 +627,7 @@ public class MonteCarloSimulation {
         } else {
             
             if(this.iterationCheck == 1) {
-                
+
                 Collections.sort(excelRowBuffer, Comparator.comparingInt(row -> ((Number) row.get(0)).intValue()));
                 excelRowBuffer.forEach(row -> writeResultsToExcel(sheet, row));
                 try (
